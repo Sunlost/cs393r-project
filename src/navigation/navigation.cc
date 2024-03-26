@@ -86,6 +86,20 @@ Navigation::Navigation(const string& map_name, ros::NodeHandle* n) :
 }
 
 void Navigation::SetNavGoal(const Vector2f& loc, float angle) {
+
+  // time to voronoi
+
+  // either
+    // a. map our line segment constructs to the corresponding boost types
+    // b. reconstruct a map made of the boost line segments instead
+  
+  // tell boost to make the voronoi diagram
+
+  // run a*
+
+  // 
+
+
 }
 
 void Navigation::UpdateLocation(const Eigen::Vector2f& loc, float angle) {
