@@ -44,8 +44,8 @@
 // correspond to the neighboring sites that form a bisector and values map to
 // the corresponding Voronoi edges in the output data structure.
 template <typename T,
-          typename CTT = detail::voronoi_ctype_traits<T>,
-          typename VP = detail::voronoi_predicates<CTT> >
+          typename CTT = voronoi_ctype_traits<T>,
+          typename VP = voronoi_predicates<CTT> >
 class voronoi_builder {
  public:
   typedef typename CTT::int_type int_type;
@@ -133,11 +133,11 @@ class voronoi_builder {
   }
 
  private:
-  typedef detail::point_2d<int_type> point_type;
-  typedef detail::site_event<int_type> site_event_type;
+  typedef point_2d<int_type> point_type;
+  typedef site_event<int_type> site_event_type;
   typedef typename std::vector<site_event_type>::const_iterator
     site_event_iterator_type;
-  typedef detail::circle_event<fpt_type> circle_event_type;
+  typedef circle_event<fpt_type> circle_event_type;
   typedef typename VP::template point_comparison_predicate<point_type>
     point_comparison_predicate;
   typedef typename VP::
@@ -147,8 +147,8 @@ class voronoi_builder {
     template circle_formation_predicate<site_event_type, circle_event_type>
     circle_formation_predicate_type;
   typedef void edge_type;
-  typedef detail::beach_line_node_key<site_event_type> key_type;
-  typedef detail::beach_line_node_data<edge_type, circle_event_type>
+  typedef beach_line_node_key<site_event_type> key_type;
+  typedef beach_line_node_data<edge_type, circle_event_type>
     value_type;
   typedef typename VP::template node_comparison_predicate<key_type>
     node_comparer_type;
@@ -161,7 +161,7 @@ class voronoi_builder {
     }
     event_comparison_predicate predicate;
   };
-  typedef detail::ordered_queue<event_type, event_comparison_type>
+  typedef ordered_queue<event_type, event_comparison_type>
     circle_event_queue_type;
   typedef std::pair<point_type, beach_line_iterator> end_point_type;
 
@@ -512,6 +512,6 @@ class voronoi_builder {
   void operator=(const voronoi_builder&);
 };
 
-typedef voronoi_builder<detail::int32> default_voronoi_builder;
+typedef voronoi_builder<int32> default_voronoi_builder;
 
 #endif  // BOOST_POLYGON_VORONOI_BUILDER

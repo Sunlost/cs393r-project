@@ -144,7 +144,7 @@ class Navigation {
   // Latency compensation
   LatencyCompensation* latency_compensation_;
 
-  GlobalPlanner* global_planner_;
+  GlobalPlanner global_planner_;
 };
 
 

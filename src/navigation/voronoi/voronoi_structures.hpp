@@ -14,11 +14,8 @@
 #include <queue>
 #include <vector>
 
-#include "boost/polygon/voronoi_geometry_type.hpp"
+#include "voronoi_geometry_type.hpp"
 
-namespace boost {
-namespace polygon {
-namespace detail {
 // Cartesian 2D point data structure.
 template <typename T>
 class point_2d {
@@ -443,8 +440,5 @@ class beach_line_node_data {
   Circle* circle_event_;
   Edge* edge_;
 };
-}  // detail
-}  // polygon
-}  // boost
 
 #endif  // BOOST_POLYGON_DETAIL_VORONOI_STRUCTURES

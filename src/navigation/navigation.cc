@@ -31,11 +31,11 @@
 #include "shared/math/math_util.h"
 #include "shared/util/timer.h"
 #include "shared/ros/ros_helpers.h"
-#include "navigation.h"
+// #include "navigation.h"
 #include "visualization/visualization.h"
 #include "path_options.h"
 #include "latency_compensation.h"
-#include "global_planner.h"
+// #include "global_planner.h" 
 
 using Eigen::Vector2f;
 using amrl_msgs::AckermannCurvatureDriveMsg;
@@ -73,12 +73,13 @@ Navigation::Navigation(const string& map_name, ros::NodeHandle* n) :
     nav_complete_(true),
     nav_goal_loc_(0, 0),
     nav_goal_angle_(0),
-    latency_compensation_(new LatencyCompensation(0, 0, 0)) 
+    latency_compensation_(new LatencyCompensation(0, 0, 0)),
+    global_planner_()
     // TODO: add global planner constructor call here
       // pass map name in
   {
   map_.Load(GetMapFileFromName(map_name));
-  global_planner_(new GlobalPlanner(map_));
+  global_planner_.initialize(map_);
   drive_pub_ = n->advertise<AckermannCurvatureDriveMsg>(
       "ackermann_curvature_drive", 1);
   viz_pub_ = n->advertise<VisualizationMsg>("visualization", 1);

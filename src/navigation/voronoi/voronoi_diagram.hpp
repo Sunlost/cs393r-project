@@ -265,12 +265,12 @@ struct voronoi_diagram_traits {
     enum { ULPS = 128 };
     bool operator()(const vertex_type& v1, const vertex_type& v2) const {
       return (ulp_cmp(v1.x(), v2.x(), ULPS) ==
-              detail::ulp_comparison<T>::EQUAL) &&
+              ulp_comparison<T>::EQUAL) &&
              (ulp_cmp(v1.y(), v2.y(), ULPS) ==
-              detail::ulp_comparison<T>::EQUAL);
+              ulp_comparison<T>::EQUAL);
     }
    private:
-    typename detail::ulp_comparison<T> ulp_cmp;
+    class ulp_comparison<T> ulp_cmp;
   };
 };
 
@@ -332,7 +332,7 @@ class voronoi_diagram {
   }
 
   template <typename CT>
-  void _process_single_site(const detail::site_event<CT>& site) {
+  void _process_single_site(const site_event<CT>& site) {
     cells_.push_back(cell_type(site.initial_index(), site.source_category()));
   }
 
@@ -341,8 +341,8 @@ class voronoi_diagram {
   // Returns a pair of pointers to a new half-edges.
   template <typename CT>
   std::pair<void*, void*> _insert_new_edge(
-      const detail::site_event<CT>& site1,
-      const detail::site_event<CT>& site2) {
+      const site_event<CT>& site1,
+      const site_event<CT>& site2) {
     // Get sites' indexes.
     std::size_t site_index1 = site1.sorted_index();
     std::size_t site_index2 = site2.sorted_index();
@@ -389,9 +389,9 @@ class voronoi_diagram {
   // new Voronoi vertex point. Returns a pair of pointers to a new half-edges.
   template <typename CT1, typename CT2>
   std::pair<void*, void*> _insert_new_edge(
-      const detail::site_event<CT1>& site1,
-      const detail::site_event<CT1>& site3,
-      const detail::circle_event<CT2>& circle,
+      const site_event<CT1>& site1,
+      const site_event<CT1>& site3,
+      const circle_event<CT2>& circle,
       void* data12, void* data23) {
     edge_type* edge12 = static_cast<edge_type*>(data12);
     edge_type* edge23 = static_cast<edge_type*>(data23);
