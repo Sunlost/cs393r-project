@@ -56,15 +56,19 @@ void GlobalPlanner::run_global_planner() {
 }
 
 // function to run a*, smooth the path to be kinematically feasible?
-void GlobalPlanner::plan_global_path(const Vector2f& goal_loc, float goal_angle) {
+void GlobalPlanner::plan_global_path(Vector2f& curr_loc, float curr_angle, const Vector2f& goal_loc, float goal_angle) {
     // a*
     // we can iterate through voronoi diagram like this:
     // https://www.boost.org/doc/libs/1_84_0/libs/polygon/doc/voronoi_basic_tutorial.htm
 
+    // so we're not guaranteed that our starting location and goal location are on edges in our voronoi diagram
+    // to deal with that, let's find the closest point between our desired location and a voronoi edge and call that our start and our goal
+    // and! we have to make sure we don't run into a wall in order to get to/leave that edge
+    voronoi_diagram<double>::vertex_type &start = voronoi_diagram<double>::voronoi_vertex();
+    voronoi_diagram<double>::vertex_type &goal = voronoi_diagram<double>::voronoi_vertex();
+
     // push start of voronoi diagram to queue
-    // so basically we want to push whatever our current location on the voronoi diagram is?
-    // 
-    // queue_.Push();
+    queue_.Push();
 
     // instantiate parent vector of voronoi nodes and cost vector
     // set cost for start to 0

@@ -16,5 +16,5 @@ public:
     void initialize(const vector_map::VectorMap& map);
     void run_global_planner();
     // void build_diagram();
-    void plan_global_path(const Eigen::Vector2f&, float);
+    void plan_global_path(Eigen::Vector2f& curr_loc, float curr_angle, const Eigen::Vector2f& goal_loc, float goal_angle);
 };
