@@ -25,6 +25,7 @@
 
 #include "vector_map/vector_map.h"
 #include "latency_compensation.h"
+#include "global_planner.h"
 
 #ifndef NAVIGATION_H
 #define NAVIGATION_H
@@ -142,6 +143,8 @@ class Navigation {
 
   // Latency compensation
   LatencyCompensation* latency_compensation_;
+
+  GlobalPlanner* global_planner_;
 };
 
 

@@ -35,6 +35,7 @@
 #include "visualization/visualization.h"
 #include "path_options.h"
 #include "latency_compensation.h"
+#include "global_planner.h"
 
 using Eigen::Vector2f;
 using amrl_msgs::AckermannCurvatureDriveMsg;
@@ -73,8 +74,11 @@ Navigation::Navigation(const string& map_name, ros::NodeHandle* n) :
     nav_goal_loc_(0, 0),
     nav_goal_angle_(0),
     latency_compensation_(new LatencyCompensation(0, 0, 0)) 
+    // TODO: add global planner constructor call here
+      // pass map name in
   {
   map_.Load(GetMapFileFromName(map_name));
+  global_planner_(new GlobalPlanner(map_));
   drive_pub_ = n->advertise<AckermannCurvatureDriveMsg>(
       "ackermann_curvature_drive", 1);
   viz_pub_ = n->advertise<VisualizationMsg>("visualization", 1);
@@ -89,6 +93,7 @@ void Navigation::SetNavGoal(const Vector2f& loc, float angle) {
 
   // time to voronoi
 
+
   // either
     // a. map our line segment constructs to the corresponding boost types
     // b. reconstruct a map made of the boost line segments instead
@@ -97,7 +102,9 @@ void Navigation::SetNavGoal(const Vector2f& loc, float angle) {
 
   // run a*
 
-  // 
+  // record local observations onto the map
+
+  // repeat
 
 
 }
