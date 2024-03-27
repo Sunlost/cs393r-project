@@ -9,7 +9,7 @@ class GlobalPlanner {
 public:
     voronoi_builder<int32> vb_;
     voronoi_diagram<double> vd_;
-    SimpleQueue<voronoi_diagram<double>::vertex_type, Eigen::Vector2f> queue_;
+    SimpleQueue<voronoi_diagram<double>::vertex_type, uint64_t, uint64_t> queue_;
 
     // GlobalPlanner();
 

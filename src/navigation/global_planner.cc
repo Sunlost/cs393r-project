@@ -64,11 +64,11 @@ void GlobalPlanner::plan_global_path(Vector2f& curr_loc, float curr_angle, const
     // so we're not guaranteed that our starting location and goal location are on edges in our voronoi diagram
     // to deal with that, let's find the closest point between our desired location and a voronoi edge and call that our start and our goal
     // and! we have to make sure we don't run into a wall in order to get to/leave that edge
-    voronoi_diagram<double>::vertex_type &start = voronoi_diagram<double>::voronoi_vertex();
-    voronoi_diagram<double>::vertex_type &goal = voronoi_diagram<double>::voronoi_vertex();
+    // voronoi_diagram<double>::vertex_type &start = voronoi_diagram<double>::voronoi_vertex();
+    // voronoi_diagram<double>::vertex_type &goal = voronoi_diagram<double>::voronoi_vertex();
 
-    // push start of voronoi diagram to queue
-    queue_.Push();
+    // // push start of voronoi diagram to queue
+    // queue_.Push();
 
     // instantiate parent vector of voronoi nodes and cost vector
     // set cost for start to 0

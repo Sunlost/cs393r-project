@@ -21,62 +21,70 @@
 #include <algorithm>
 #include <deque>
 #include <utility>
+#include <tuple>
 
 #ifndef MUTABLE_QUEUE
 #define MUTABLE_QUEUE
 
 using std::deque;
-using std::pair;
-using std::make_pair;
+// uses first & second
+// using std::pair;
+// using std::make_pair;
+// uses std::get<index>(tuple_name) 
+using std::tuple;
+using std::make_tuple;
 
-template<class Value, class Priority>
+template<class Value, class Cost, class Heuristic>
 class SimpleQueue {
  private:
   public:
-  // Insert a new value, with the specified priority. If the value
-  // already exists, its priority is updated.
-  void Push(const Value& v, const Priority& p) {
+  // Insert a new value, with the specified Cost. If the value
+  // already exists, its Cost is updated.
+  void Push(const Value& v, const Cost& p, const Heuristic& h) {
     for (auto& x : values_) {
-      // If the value already exists, update its priority, re-sort the priority
+      // If the value already exists, update its Cost, re-sort the Cost
       // queue, and return.
-      if (x.first == v) {
-        x.second = p;
+      if (std::get<0>(x) == v) {
+        std::get<1>(x) = p;
+        std::get<2>(x) = h;
         Sort();
         return;
       }
     }
     // Find where this value should go, and insert it there.
     for (size_t i = 0; i < values_.size(); ++i) {
-      if (values_[i].second > p) {
-        values_.insert(values_.begin() + i, make_pair(v, p));
+      if (std::get<1>(values_[i]) + std::get<2>(values_[i]) > p + h) {
+        values_.insert(values_.begin() + i, make_tuple(v, p, h));
         return;
       }
     }
-    values_.insert(values_.end(), make_pair(v, p));
+    values_.insert(values_.end(), make_tuple(v, p, h));
   }
 
   // Sorts the priorities.
   void Sort() {
     static const auto comparator = 
-        [](const pair<Value, Priority>& v1, const pair<Value, Priority>& v2) {
-      return (v1.second < v2.second);
+        [](const tuple<Value, Cost, Heuristic>& v1, const tuple<Value, Cost, Heuristic>& v2) {
+      auto v1_cost = std::get<1>(v1) + std::get<2>(v1);
+      auto v2_cost = std::get<1>(v2) + std::get<2>(v2);
+      return (v1_cost != v2_cost) ? (v1_cost > v2_cost) : (std::get<2>(v1) > std::get<2>(v2));
     };
     sort(values_.begin(), values_.end(), comparator);
   }
 
-  // Retreive the value with the highest priority.
+  // Retreive the value with the highest Cost.
   Value Pop() {
     if (values_.empty()) {
       fprintf(stderr, "ERROR: Pop() called on an empty queue!\n");
       exit(1);
     }
     Sort();
-    const Value v = values_.back().first;
+    const Value v = std::get<0>(values_.back());
     values_.resize(values_.size() - 1);
     return v;
   }
 
-  // Returns true iff the priority queue is empty.
+  // Returns true iff the Cost queue is empty.
   bool Empty() {
     return values_.empty();
   }
@@ -84,13 +92,13 @@ class SimpleQueue {
   // Returns true iff the provided value is already on the queue.
   bool Exists(const Value& v) {
     for (const auto& x : values_) {
-      if (x.first == v) return true;
+      if (std::get<0>(x) == v) return true;
     }
     return false;
   }
 
   private:
-  deque<pair<Value, Priority> > values_;
+  deque<tuple<Value, Cost, Heuristic> > values_;
 };
 
 #endif  // MUTABLE_QUEUE
