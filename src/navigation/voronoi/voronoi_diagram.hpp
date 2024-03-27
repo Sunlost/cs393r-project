@@ -100,14 +100,25 @@ class voronoi_vertex {
   typedef std::size_t color_type;
   typedef voronoi_edge<coordinate_type> voronoi_edge_type;
 
+  voronoi_vertex() :
+      x_(0),
+      y_(0),
+      incident_edge_(NULL),
+      color_(0),
+      id_(0) {}
+
   voronoi_vertex(const coordinate_type& x, const coordinate_type& y) :
       x_(x),
       y_(y),
       incident_edge_(NULL),
-      color_(0) {}
+      color_(0),
+      id_(0) {}
 
   const coordinate_type& x() const { return x_; }
   const coordinate_type& y() const { return y_; }
+
+  uint64_t id() const { return id_; }
+  void set_id(uint64_t id) { id_ = id; }
 
   bool is_degenerate() const { return incident_edge_ == NULL; }
 
@@ -132,6 +143,7 @@ class voronoi_vertex {
   coordinate_type y_;
   voronoi_edge_type* incident_edge_;
   mutable color_type color_;
+  mutable uint64_t id_;
 };
 
 // Half-edge data structure. Represents Voronoi edge.

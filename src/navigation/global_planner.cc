@@ -11,7 +11,9 @@
 #include "simple_queue.h"
 
 #include "global_planner.h"
+#include <cstddef>
 
+using std::map;
 using Eigen::Vector2f;
 using geometry::line2f;
 
@@ -61,14 +63,76 @@ void GlobalPlanner::plan_global_path(Vector2f& curr_loc, float curr_angle, const
     // we can iterate through voronoi diagram like this:
     // https://www.boost.org/doc/libs/1_84_0/libs/polygon/doc/voronoi_basic_tutorial.htm
 
-    // so we're not guaranteed that our starting location and goal location are on edges in our voronoi diagram
-    // to deal with that, let's find the closest point between our desired location and a voronoi edge and call that our start and our goal
-    // and! we have to make sure we don't run into a wall in order to get to/leave that edge
-    voronoi_diagram<double>::vertex_type &start = voronoi_diagram<double>::voronoi_vertex();
-    voronoi_diagram<double>::vertex_type &goal = voronoi_diagram<double>::voronoi_vertex();
 
-    // push start of voronoi diagram to queue
-    queue_.Push();
+    // TODO: change these.... start is closest vertex to robot? goal is closest vertex to goal?
+    voronoi_diagram<double>::vertex_type start(0, 0);
+    voronoi_diagram<double>::vertex_type goal(0, 0);
+
+    SimpleQueue<uint64_t, double> frontier;
+    frontier.Push(START_ID, 0);
+
+    uint64_t next_id = 3; // next id a previously-unidentified vertex will use
+    map<uint64_t, voronoi_diagram<double>::vertex_type> id_map;
+    id_map[START_ID] = start;
+    id_map[GOAL_ID] = goal;
+
+    map<uint64_t, voronoi_diagram<double>::vertex_type> parent;
+    parent[START_ID] = start;
+
+    map<uint64_t, double> cost;
+    cost[START_ID] = 0;
+
+    // parent map : node -> parent node (where it came from on lowest-cost path)
+    // cost map : node -> lowest cost found 
+
+    // push start of voronoi diagram to frontier queue
+        // identify closest voronoi vertex
+
+    // while queue not empty
+        // get head of queue, A
+        // if A is goal, we're done
+            // break
+        // iterate over A's neighbors
+            // new cost = current cost + cost of edge from A to A' (neighbor)
+            // if A' not already in cost, or new cost is better than A's old cost
+                // insert A' into cost if needed, new value is new cost
+                // insert A' into parent if needed, new value is A
+                // add A' to queue, with priority value [ new cost + heuristic(A') ]
+
+    while(!frontier.Empty()) {
+        uint64_t cur_id = frontier.Pop();
+        if(cur_id == GOAL_ID) break;
+        voronoi_diagram<double>::vertex_type cur = id_map[cur_id];
+        voronoi_diagram<double>::edge_type *edge = cur.incident_edge();
+        do {
+            // should always be vertex1? see voronoi_diagram.hpp:168-177
+            voronoi_diagram<double>::vertex_type next = *(edge->vertex1());
+            double dist = pow(cur.x() - next.x(), 2) + pow(cur.y() - next.y(), 2); // squared distance
+            double new_cost = cost[cur_id] + dist;
+            if(next.id() == 0) {
+                next.set_id(next_id++);
+                id_map[next.id()] = next;
+            }
+            map<uint64_t, double>::iterator entry = cost.find(next.id());
+            if(entry == cost.end() || entry->second > new_cost) {
+                cost[next.id()] = new_cost;
+                parent[next.id()] = cur;
+                frontier.Push(next.id(), new_cost + 0); // TODO: add heuristic in place of 0
+            }
+        } while(edge != cur.incident_edge());
+    }
+
+
+    // follow parent dict mappings from goal to our starting vertex
+
+    // [MAYBE FUTURE TODO:] smooth the path along those vertices 
+        // our simple carrot follower strategy handles this local smoothing for now.
+
+    // establish/communicate carrot goal?
+
+
+    // =====================================================================================
+
 
     // instantiate parent vector of voronoi nodes and cost vector
     // set cost for start to 0
