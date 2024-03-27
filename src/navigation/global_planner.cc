@@ -12,8 +12,11 @@
 
 #include "global_planner.h"
 #include <cstddef>
+#include <eigen3/Eigen/src/Core/Matrix.h>
+#include <list>
 
 using std::map;
+using std::list;
 using Eigen::Vector2f;
 using geometry::line2f;
 
@@ -30,10 +33,13 @@ void GlobalPlanner::initialize(const vector_map::VectorMap& map) {
         // vd_(voronoi_diagram<double>),
         // queue_(nullptr, 0, 0)
 
+    vb_ = voronoi_builder<int32>();
+    vd_ = voronoi_diagram<double>();
+    global_path_ = list<voronoi_diagram<double>::vertex_type>();
+
     // construct the diagram builder 
 
-
-    // insert map gesometry into the diagram builder
+    // insert map geometry into the diagram builder
     for (size_t i = 0; i < map.lines.size(); i++) {
         const line2f map_line = map.lines[i];
         vb_.insert_segment(
@@ -44,18 +50,20 @@ void GlobalPlanner::initialize(const vector_map::VectorMap& map) {
         );
     }
     
-    vb_.construct(&vd_);
     // instantiate any other global variables we're using?
     // SimpleQueue<uint64_t, Eigen::Vector2f> queue;
 }
 
 
 
-// overarching function to handle global planning process
-void GlobalPlanner::run_global_planner() {
+Eigen::Vector2f GlobalPlanner::get_carrot() {
+    // establish/communicate carrot goal?
+
 
 
 }
+
+
 
 // function to run a*, smooth the path to be kinematically feasible?
 void GlobalPlanner::plan_global_path(Vector2f& curr_loc, float curr_angle, const Vector2f& goal_loc, float goal_angle) {
@@ -63,6 +71,11 @@ void GlobalPlanner::plan_global_path(Vector2f& curr_loc, float curr_angle, const
     // we can iterate through voronoi diagram like this:
     // https://www.boost.org/doc/libs/1_84_0/libs/polygon/doc/voronoi_basic_tutorial.htm
 
+    // recontruct the voronoi diagram
+    vb_.construct(&vd_);
+
+    // TODO: how do we work with the voronoi diagram wrt start/goal?
+        // couple different ideas -- we need to meet to hash through them
 
     // TODO: change these.... start is closest vertex to robot? goal is closest vertex to goal?
     voronoi_diagram<double>::vertex_type start(0, 0);
@@ -122,37 +135,18 @@ void GlobalPlanner::plan_global_path(Vector2f& curr_loc, float curr_angle, const
         } while(edge != cur.incident_edge());
     }
 
-
     // follow parent dict mappings from goal to our starting vertex
+    voronoi_diagram<double>::vertex_type path_vertex = goal;
+    global_path_.clear();
+    while(path_vertex.id() != START_ID) {
+        global_path_.push_back(path_vertex);
+        path_vertex = parent[path_vertex.id()];
+    }
+    global_path_.push_back(start);
 
     // [MAYBE FUTURE TODO:] smooth the path along those vertices 
         // our simple carrot follower strategy handles this local smoothing for now.
 
-    // establish/communicate carrot goal?
-
-
-    // =====================================================================================
-
-
-    // instantiate parent vector of voronoi nodes and cost vector
-    // set cost for start to 0
-
-    // while (!queue_.Empty()) {
-    //     voronoi_diagram<double>::vertex_type &current = queue_.Pop()
-    //     // somehow we need to have some notion of car angleyness... TODO: that
-    //     if (current.x() == goal_loc.x() && current.y() == goal_loc.y()) {
-    //         break;
-    //     }
-
-    //     const voronoi_diagram<double>::edge_type *edge = current.incident_edge();
-    //     edge.        
-    //     do {
-    //     if (edge->is_primary())
-    //         ++result;
-    //     edge = edge->rot_next();
-    //     } while (edge != vertex.incident_edge());
-    //     }
-    // 
 }
 
 // void visualize_voronoi(amrl_msgs::VisualizationMsg & viz_msg) {
