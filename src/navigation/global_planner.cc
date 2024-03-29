@@ -31,10 +31,10 @@ void GlobalPlanner::initialize(const vector_map::VectorMap& map) {
     //         vb_(voronoi_builder<int32>),
         // vd_(voronoi_diagram<double>),
         // queue_(nullptr, 0, 0)
-
-    vb_ = voronoi_builder<int32>();
-    vd_ = voronoi_diagram<double>();
-    global_path_ = list<voronoi_diagram<double>::vertex_type>();
+    
+    voronoi_builder<int32> vb_;
+    voronoi_diagram<double> vd_;
+    global_path_ = vector<voronoi_diagram<double>::vertex_type>();
 
     // construct the diagram builder 
 
@@ -66,16 +66,15 @@ Eigen::Vector2f GlobalPlanner::get_carrot(Vector2f& curr_loc, float curr_angle) 
 
     assert(global_path_.size() > 1); // we have at least two vertices in our global path
                              
-    Eigen::Vector2f edge_start_vec(global_path_[global_path_.size() - 1].x(), global_path_[global_path_.size() - 1].y());
-    Eigen::Vector2f edge_end_vec(0, 0);
-    Eigen::Vector2f circle_center = curr_loc;
-    double radius = 0; // TODO: change to whatever we make the size of the circle
-    double squared_distance = 0; // ignored
-    uint64_t index = global_path_.size() - 2;
+    const Eigen::Vector2f edge_start_vec(global_path_[global_path_.size() - 1].x(), global_path_[global_path_.size() - 1].y());
+    const Eigen::Vector2f circle_center = curr_loc;
+    const float radius = 0; // TODO: change to whatever we make the size of the circle
+    float squared_distance = 0; // ignored
+    int64_t index = global_path_.size() - 2;
 
     while(index >= 0) {
-        edge_end_vec = (global_path_[index].x(), global_path_[index].y());
-        Eigen::Vector2f intersection_point(0, 0);
+        const Eigen::Vector2f edge_end_vec(global_path_[index].x(), global_path_[index].y());
+        Eigen::Vector2f intersection_point = Eigen::Vector2f::Zero();
 
         // TODO: either rewrite this function or write our own function? 
             // a circle can intersect w/ a line in two places. need to decide which is correct.
@@ -87,8 +86,11 @@ Eigen::Vector2f GlobalPlanner::get_carrot(Vector2f& curr_loc, float curr_angle) 
         index--;
     }
 
+    // amendment: I think we should handle this in the navigation controller instead for more control
+    // so this stuff is not quite correct yet
+
     // we failed to find a valid intersection anywhere on our path -- replan and check for a carrot again.
-    plan_global_path();
+    // plan_global_path(curr_loc, curr_angle, goal_loc, goal_angle);
     return get_carrot(curr_loc, curr_angle); // potentially dangerous code style, potential infinite loop ... probably should avoid this.
 }
 
@@ -108,7 +110,7 @@ void GlobalPlanner::plan_global_path(Vector2f& curr_loc, float curr_angle, const
 
     build_voronoi(curr_loc, curr_angle, goal_loc, goal_angle);
 
-    // will move some of this stuff into build_voronoi
+    // will move some of this stuff into build_voronoi later
     // TODO: how do we work with the voronoi diagram wrt start/goal?
         // couple different ideas -- we need to meet to hash through them
     vb_.construct(&vd_);
