@@ -13,10 +13,9 @@
 #include "global_planner.h"
 #include <cstddef>
 #include <eigen3/Eigen/src/Core/Matrix.h>
-#include <list>
 
 using std::map;
-using std::list;
+using std::vector;
 using Eigen::Vector2f;
 using geometry::line2f;
 
@@ -56,14 +55,50 @@ void GlobalPlanner::initialize(const vector_map::VectorMap& map) {
 
 
 
-Eigen::Vector2f GlobalPlanner::get_carrot() {
-    // establish/communicate carrot goal?
+Eigen::Vector2f GlobalPlanner::get_carrot(Vector2f& curr_loc, float curr_angle) {
+
+    // iterate through lines on path, check for intersection with circle centered on car loc
+        // specific attention to intersections biased towards the goal point 
+            // (i.e. a line will have two intersections on a circle ... pick the one towards the goal)
+
+    // maybe: as you iterate through the lines, if you find entirely-completed parts of the path, remove them from the path?
 
 
+    assert(global_path_.size() > 1); // we have at least two vertices in our global path
+                             
+    Eigen::Vector2f edge_start_vec(global_path_[global_path_.size() - 1].x(), global_path_[global_path_.size() - 1].y());
+    Eigen::Vector2f edge_end_vec(0, 0);
+    Eigen::Vector2f circle_center = curr_loc;
+    double radius = 0; // TODO: change to whatever we make the size of the circle
+    double squared_distance = 0; // ignored
+    uint64_t index = global_path_.size() - 2;
 
+    while(index >= 0) {
+        edge_end_vec = (global_path_[index].x(), global_path_[index].y());
+        Eigen::Vector2f intersection_point(0, 0);
+
+        // TODO: either rewrite this function or write our own function? 
+            // a circle can intersect w/ a line in two places. need to decide which is correct.
+        if(geometry::FurthestFreePointCircle(edge_start_vec, edge_end_vec, circle_center, radius, &squared_distance, &intersection_point)) {
+            // we intersect -- use this as a carrot
+            return intersection_point;
+        }
+
+        index--;
+    }
+
+    // we failed to find a valid intersection anywhere on our path -- replan and check for a carrot again.
+    plan_global_path();
+    return get_carrot(curr_loc, curr_angle); // potentially dangerous code style, potential infinite loop ... probably should avoid this.
 }
 
+void GlobalPlanner::build_voronoi(Vector2f& curr_loc, float curr_angle, const Vector2f& goal_loc, float goal_angle) {
+    // construct voronoi
 
+    // add goal vertex edge to voronoi vertices with some proximity to the goal vertex
+        // check kinematic feasibility of the edge with polygon-clipping alg
+    
+}
 
 // function to run a*, smooth the path to be kinematically feasible?
 void GlobalPlanner::plan_global_path(Vector2f& curr_loc, float curr_angle, const Vector2f& goal_loc, float goal_angle) {
@@ -71,11 +106,12 @@ void GlobalPlanner::plan_global_path(Vector2f& curr_loc, float curr_angle, const
     // we can iterate through voronoi diagram like this:
     // https://www.boost.org/doc/libs/1_84_0/libs/polygon/doc/voronoi_basic_tutorial.htm
 
-    // recontruct the voronoi diagram
-    vb_.construct(&vd_);
+    build_voronoi(curr_loc, curr_angle, goal_loc, goal_angle);
 
+    // will move some of this stuff into build_voronoi
     // TODO: how do we work with the voronoi diagram wrt start/goal?
         // couple different ideas -- we need to meet to hash through them
+    vb_.construct(&vd_);
 
     // TODO: change these.... start is closest vertex to robot? goal is closest vertex to goal?
     voronoi_diagram<double>::vertex_type start(0, 0);
@@ -130,7 +166,8 @@ void GlobalPlanner::plan_global_path(Vector2f& curr_loc, float curr_angle, const
             if(entry == cost.end() || entry->second > new_cost) {
                 cost[next.id()] = new_cost;
                 parent[next.id()] = cur;
-                frontier.Push(next.id(), new_cost + 0); // TODO: add heuristic in place of 0
+                double heur_cost = pow(next.x() - goal.x(), 2) + pow(next.y() - goal.y(), 2); // squared distance
+                frontier.Push(next.id(), new_cost + heur_cost);
             }
         } while(edge != cur.incident_edge());
     }
@@ -151,6 +188,5 @@ void GlobalPlanner::plan_global_path(Vector2f& curr_loc, float curr_angle, const
 
 // void visualize_voronoi(amrl_msgs::VisualizationMsg & viz_msg) {
 //     // draw the line segments on the viz_msg
-//     // plot the 
-    
+//     // plot the  
 // }
