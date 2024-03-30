@@ -31,12 +31,13 @@ void GlobalPlanner::initialize(const vector_map::VectorMap& map) {
     //         vb_(voronoi_builder<int32>),
         // vd_(voronoi_diagram<double>),
         // queue_(nullptr, 0, 0)
-    
-    voronoi_builder<int32> vb_;
-    voronoi_diagram<double> vd_;
+
+    vb_ = voronoi_builder<int32>();
+    vd_ = voronoi_diagram<double>();
     global_path_ = vector<voronoi_diagram<double>::vertex_type>();
 
     // construct the diagram builder 
+    
 
     // insert map geometry into the diagram builder
     for (size_t i = 0; i < map.lines.size(); i++) {
@@ -53,6 +54,9 @@ void GlobalPlanner::initialize(const vector_map::VectorMap& map) {
     // SimpleQueue<uint64_t, Eigen::Vector2f> queue;
 }
 
+void GlobalPlanner::set_goal(int64 x, int64 y) {
+    vb_.insert_point(x, y);
+}
 
 
 Eigen::Vector2f GlobalPlanner::get_carrot(Vector2f& curr_loc, float curr_angle) {
@@ -66,15 +70,17 @@ Eigen::Vector2f GlobalPlanner::get_carrot(Vector2f& curr_loc, float curr_angle) 
 
     assert(global_path_.size() > 1); // we have at least two vertices in our global path
                              
-    const Eigen::Vector2f edge_start_vec(global_path_[global_path_.size() - 1].x(), global_path_[global_path_.size() - 1].y());
-    const Eigen::Vector2f circle_center = curr_loc;
-    const float radius = 0; // TODO: change to whatever we make the size of the circle
-    float squared_distance = 0; // ignored
-    int64_t index = global_path_.size() - 2;
+    Eigen::Vector2f edge_start_vec(0);
+    Eigen::Vector2f edge_end_vec(global_path_[global_path_.size() - 1].x(), global_path_[global_path_.size() - 1].y());
+    Eigen::Vector2f circle_center = curr_loc;
+    double radius = 0; // TODO: change to whatever we make the size of the circle
+    double squared_distance = 0; // ignored
+    uint64_t index = global_path_.size() - 2;
 
     while(index >= 0) {
-        const Eigen::Vector2f edge_end_vec(global_path_[index].x(), global_path_[index].y());
-        Eigen::Vector2f intersection_point = Eigen::Vector2f::Zero();
+        edge_start_vec = edge_end_vec;
+        edge_end_vec = (global_path_[index].x(), global_path_[index].y());
+        Eigen::Vector2f intersection_point(0);
 
         // TODO: either rewrite this function or write our own function? 
             // a circle can intersect w/ a line in two places. need to decide which is correct.

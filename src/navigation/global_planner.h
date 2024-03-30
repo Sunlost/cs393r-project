@@ -16,6 +16,8 @@ public:
     const uint64_t START_ID = 1;
     const uint64_t GOAL_ID = 2;
 
+    bool goal_set = false;
+
     void initialize(const vector_map::VectorMap& map);
     Eigen::Vector2f get_carrot(Eigen::Vector2f& curr_loc, float curr_angle);
     void build_voronoi(Eigen::Vector2f& curr_loc, float curr_angle, const Eigen::Vector2f& goal_loc, float goal_angle);
