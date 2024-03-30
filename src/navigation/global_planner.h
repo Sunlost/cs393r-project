@@ -5,7 +5,11 @@
 #include "simple_queue.h"
 #include "eigen3/Eigen/Dense"
 #include "eigen3/Eigen/Geometry"
+#include "voronoi/voronoi_builder.hpp"
 #include "voronoi/voronoi_diagram.hpp"
+#include "amrl_msgs/VisualizationMsg.h"
+
+
 
 using std::vector;
 
@@ -19,9 +23,11 @@ public:
     const uint64_t GOAL_ID = 2;
 
     void initialize(const vector_map::VectorMap& map);
-    Eigen::Vector2f get_carrot(Eigen::Vector2f& curr_loc, float curr_angle);
-    void build_voronoi(Eigen::Vector2f& curr_loc, float curr_angle, const Eigen::Vector2f& goal_loc, float goal_angle);
-    void plan_global_path(Eigen::Vector2f& curr_loc, float curr_angle, const Eigen::Vector2f& goal_loc, float goal_angle);
+    // Eigen::Vector2f get_carrot(Eigen::Vector2f& curr_loc, float curr_angle);
+    // void build_voronoi(Eigen::Vector2f& curr_loc, float curr_angle, const Eigen::Vector2f& goal_loc, float goal_angle);
+    void build_voronoi();
+    void visualize_voronoi(amrl_msgs::VisualizationMsg & viz_msg);
+    // void plan_global_path(Eigen::Vector2f& curr_loc, float curr_angle, const Eigen::Vector2f& goal_loc, float goal_angle);
 };
 
 #endif // GLOBAL_PLANNER_H

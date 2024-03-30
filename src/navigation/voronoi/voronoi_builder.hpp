@@ -132,7 +132,7 @@ class voronoi_builder {
     site_events_.clear();
   }
 
- private:
+//  private:
   typedef point_2d<int_type> point_type;
   typedef site_event<int_type> site_event_type;
   typedef typename std::vector<site_event_type>::const_iterator
@@ -488,7 +488,7 @@ class voronoi_builder {
     }
   }
 
- private:
+//  private:
   point_comparison_predicate point_comparison_;
   struct end_point_comparison {
     bool operator() (const end_point_type& end1,

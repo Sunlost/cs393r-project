@@ -35,7 +35,7 @@
 #include "visualization/visualization.h"
 #include "path_options.h"
 #include "latency_compensation.h"
-// #include "global_planner.h" 
+#include "global_planner.h" 
 
 using Eigen::Vector2f;
 using amrl_msgs::AckermannCurvatureDriveMsg;
@@ -204,7 +204,9 @@ void Navigation::Run() {
   // Plot the closest point in purple
   visualization::DrawLine(path_options[best_path].closest_point, Vector2f(0, 1/path_options[best_path].curvature), 0xFF00FF, local_viz_msg_);
   // for debugging
-  
+  // change where this is later
+  // global_planner_.build_voronoi();
+  global_planner_.visualize_voronoi(global_viz_msg_);
     
   visualization::DrawPoint(Vector2f(0, 1/path_options[best_path].curvature), 0x0000FF, local_viz_msg_);
 
