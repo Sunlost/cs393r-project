@@ -61,6 +61,8 @@ ADD_EXECUTABLE(eigen_tutorial
 
 ADD_EXECUTABLE(simple_queue_test
                src/navigation/simple_queue_test.cc)
+ADD_EXECUTABLE(planner_test
+               src/navigation/planner_test.cc)
 
 ADD_EXECUTABLE(cimg_example
                src/cimg_example.cc)
