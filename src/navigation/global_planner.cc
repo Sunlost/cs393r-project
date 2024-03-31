@@ -42,11 +42,12 @@ void GlobalPlanner::initialize(const vector_map::VectorMap& map) {
     for (size_t i = 0; i < map.lines.size(); i++) {
         const line2f map_line = map.lines[i];
         vb_.insert_segment(
-            map_line.p0.x(),
-            map_line.p0.y(),
-            map_line.p1.x(),
-            map_line.p1.y()
+            map_line.p0.x() * scale,
+            map_line.p0.y() * scale,
+            map_line.p1.x() * scale,
+            map_line.p1.y() * scale
         );
+        global_map_.emplace_back(map_line);
     }
     vb_.construct(&vd_);
     std::cout << "done constructing" << std::endl;
@@ -195,24 +196,66 @@ void GlobalPlanner::build_voronoi() {
 
 // }
 
-void GlobalPlanner::visualize_voronoi(amrl_msgs::VisualizationMsg & viz_msg) {
+float distance(const Vector2f& p1, const Vector2f& p2) {
+    return (p1-p2).norm();
+}
+
+float get_distance(const line2f& l1, const line2f& l2) {
+    float dist_start1_to_l2 = distance(l1.p0, l2.p0);
+    float dist_end1_to_l2 = distance(l1.p0, l2.p1);
+    float dist_start2_to_l1 = distance(l1.p1, l2.p0);
+    float dist_end2_to_l1 = distance(l1.p1, l2.p1);
+
+    return std::min({dist_start1_to_l2, dist_end1_to_l2, dist_start2_to_l1, dist_end2_to_l1});
+}
+
+
+void GlobalPlanner::visualize_voronoi(amrl_msgs::VisualizationMsg & viz_msg, uint32_t color) {
     std::cout<< "publishing viz" <<std::endl;
     // draw the line segments on the viz_msg
 
     voronoi_diagram<double> out;
     vb_.construct(&out);
 
+    for (const auto& line : global_map_) {
+        visualization::DrawLine(line.p0, line.p1, 0x0000ff, viz_msg);
+    }
+
+
+    for (const auto& v : out.vertices()) {
+        Vector2f p(v.x(), v.y());
+        visualization::DrawCross(p / 100, .1, color, viz_msg);
+    }
+    for (const auto& v : out.cells()) {
+        std::cout << v.source_index() << std::endl;
+        // Vector2f p(v.x(), v.y());
+        // visualization::DrawCross(p / 100, .1, color, viz_msg);
+    }
 
 
     for (const auto& edge : out.edges()) {
-        if (edge.vertex0() != nullptr && edge.vertex1() != nullptr) {
-            // edge.vertex1() != 0 && edge.vertex1() != 0) {
-                continue;
+        // if (edge.vertex0() != nullptr && edge.vertex1() != nullptr) {
+        if (edge.is_finite() && edge.is_linear()) {
+            // get the gap size
+            auto cell = edge.cell();
+            auto twin_cell = edge.twin()->cell();
+            // std::cout<< "cell site index "<< cell->source_index() << std::endl;
+            // std::cout<< "twin cell site index "<< twin_cell->source_index() << std::endl;
+
+            float gap = get_distance(global_map_[cell->source_index()], global_map_[twin_cell->source_index()]);
+            // std::cout<< "gap size " << gap << std::endl;
+
+            if (gap > 1) {
+                // std::cout<< edge.vertex0()->x() << "    " << edge.vertex1()->y() << std::endl;
+                Vector2f x(edge.vertex0()->x(), edge.vertex0()->y());
+                Vector2f y(edge.vertex1()->x(), edge.vertex1()->y());
+                // print the type of the edge
+                visualization::DrawLine(x/100, y/100, color, viz_msg);
+            }
             }
         // Vector2f x(edge.vertex0()->x(), edge.vertex0()->y());
         // Vector2f y(edge.vertex1()->x(), edge.vertex1()->y());
         // print the type of the edge
-        std::cout<< edge.vertex0() << "    " << edge.vertex1() << std::endl;
         // visualization::DrawLine(x, y, 0xff0000, viz_msg);
     }
 

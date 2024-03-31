@@ -79,6 +79,7 @@ Navigation::Navigation(const string& map_name, ros::NodeHandle* n) :
       // pass map name in
   {
   map_.Load(GetMapFileFromName(map_name));
+  std::cout << map_name << std::endl;
   global_planner_.initialize(map_);
   drive_pub_ = n->advertise<AckermannCurvatureDriveMsg>(
       "ackermann_curvature_drive", 1);
@@ -206,7 +207,8 @@ void Navigation::Run() {
   // for debugging
   // change where this is later
   // global_planner_.build_voronoi();
-  global_planner_.visualize_voronoi(global_viz_msg_);
+  // global_planner_.visualize_voronoi(local_viz_msg_, 0xff00000);
+  global_planner_.visualize_voronoi(global_viz_msg_, 0x00ff000);
     
   visualization::DrawPoint(Vector2f(0, 1/path_options[best_path].curvature), 0x0000FF, local_viz_msg_);
 
@@ -217,7 +219,7 @@ void Navigation::Run() {
   // Publish messages.
   viz_pub_.publish(local_viz_msg_);
   viz_pub_.publish(global_viz_msg_);
-  drive_pub_.publish(drive_msg_);
+  // drive_pub_.publish(drive_msg_);
   // Record control for latency compensation
   Control control = GetCartesianControl(drive_msg_.velocity, drive_msg_.curvature, drive_msg_.header.stamp.toSec());
   latency_compensation_->recordControl(control);
