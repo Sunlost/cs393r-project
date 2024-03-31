@@ -74,12 +74,10 @@ Navigation::Navigation(const string& map_name, ros::NodeHandle* n) :
     nav_goal_loc_(0, 0),
     nav_goal_angle_(0),
     latency_compensation_(new LatencyCompensation(0, 0, 0)),
-    global_planner_()
-    // TODO: add global planner constructor call here
-      // pass map name in
+    global_planner_(),
+    goal_established_(false)
   {
   map_.Load(GetMapFileFromName(map_name));
-  global_planner_.initialize(map_);
   drive_pub_ = n->advertise<AckermannCurvatureDriveMsg>(
       "ackermann_curvature_drive", 1);
   viz_pub_ = n->advertise<VisualizationMsg>("visualization", 1);
@@ -91,8 +89,12 @@ Navigation::Navigation(const string& map_name, ros::NodeHandle* n) :
 }
 
 void Navigation::SetNavGoal(const Vector2f& loc, float angle) {
-
   // time to voronoi
+  nav_goal_loc_ = loc;
+  nav_goal_angle_ = angle;
+  global_planner_.initialize(map_, nav_goal_loc_.x(), nav_goal_loc_.y());
+  goal_established_ = true;
+
 
 
   // either
@@ -107,6 +109,7 @@ void Navigation::SetNavGoal(const Vector2f& loc, float angle) {
 
   // repeat
 
+  
 
 }
 
@@ -165,8 +168,8 @@ void Navigation::Run() {
   visualization::ClearVisualizationMsg(local_viz_msg_);
   visualization::ClearVisualizationMsg(global_viz_msg_);
 
-  // If odometry has not been initialized, we can't do anything.
-  if (!odom_initialized_) return;
+  // If odometry has not been initialized or goal has not been set, we can't do anything.
+  if (!odom_initialized_ || !goal_established_) return;
 
   // The control iteration goes here. 
   // Feel free to make helper functions to structure the control appropriately.
@@ -182,8 +185,21 @@ void Navigation::Run() {
   // float dist_to_go = (10 - distance_traveled_); // hard code to make it go 10 forward
   // float cmd_vel = run1DTimeOptimalControl(dist_to_go, current_speed, robot_config_);
 
-  vector<PathOption> path_options = samplePathOptions(31, point_cloud_, robot_config_);
-  int best_path = selectPath(path_options);
+  // if robot reached nav_goal_loc_ and nav_goal_angle_, return
+  // if plan invalid, aka get_carrot returns false, replan
+  // else, run 1dtoc on our carrot
+
+
+  Eigen::Vector2f carrot_loc = Eigen::Vector2f::Zero();
+  bool carrot_found = global_planner_.get_carrot(robot_loc_, robot_angle_, &carrot_loc);
+  if(!carrot_found) {
+    global_planner_.plan_global_path(robot_loc_, robot_angle_);
+    carrot_found = global_planner_.get_carrot(robot_loc_, robot_angle_, &carrot_loc);
+    assert(carrot_found);
+  }
+
+  vector<PathOption> path_options = samplePathOptions(31, point_cloud_, robot_config_, carrot_loc);
+  int best_path = selectPath(path_options, carrot_loc);
 
   drive_msg_.curvature = path_options[best_path].curvature;
   drive_msg_.velocity = run1DTimeOptimalControl(path_options[best_path].free_path_length, current_speed, robot_config_);

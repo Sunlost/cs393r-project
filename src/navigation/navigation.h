@@ -145,6 +145,7 @@ class Navigation {
   LatencyCompensation* latency_compensation_;
 
   GlobalPlanner global_planner_;
+  bool goal_established_;
 };
 
 

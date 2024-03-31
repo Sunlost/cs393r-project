@@ -39,7 +39,8 @@ float run1DTimeOptimalControl(float dist_to_go, float current_speed, const navig
 // set curvature, free path length, obstruction for a path option
 void setPathOption(navigation::PathOption& path_option,
                         float curvature, const vector<Eigen::Vector2f>& point_cloud,
-                        const navigation::NavigationParams& robot_config) {
+                        const navigation::NavigationParams& robot_config,
+                        Eigen::Vector2f carrot_loc) {
     path_option.curvature = curvature;
     float h = robot_config.length - robot_config.base_link_offset; // distance from base link to front bumper
     if (curvature == 0) {
@@ -143,7 +144,8 @@ void setPathOption(navigation::PathOption& path_option,
 
 vector<navigation::PathOption> samplePathOptions(int num_options,
                                                     const vector<Eigen::Vector2f>& point_cloud,
-                                                    const navigation::NavigationParams& robot_config) {
+                                                    const navigation::NavigationParams& robot_config,
+                                                    Eigen::Vector2f carrot_loc) {
     static vector<navigation::PathOption> path_options;
     path_options.clear();
     float max_curvature = robot_config.max_curvature;
@@ -156,7 +158,7 @@ vector<navigation::PathOption> samplePathOptions(int num_options,
         }
         
         navigation::PathOption path_option;
-        setPathOption(path_option, curvature, point_cloud, robot_config);
+        setPathOption(path_option, curvature, point_cloud, robot_config, carrot_loc);
         path_options.push_back(path_option);
     }
     // exit(0);
@@ -164,21 +166,23 @@ vector<navigation::PathOption> samplePathOptions(int num_options,
 }
 
 
-float score(float free_path_length, float curvature, float clearance) {
+float score(float free_path_length, float goal_dist, float clearance) {
     const float w1 = 1;
     const float w2 = 0;
     const float w3 = 0.1;
-    return w1 * free_path_length + w2 * abs(1/curvature) + w3 * clearance;
+    // TODO: currently we are weighting this 0 but will have to tune this later
+    return w1 * free_path_length + w2 * goal_dist + w3 * clearance;
 }
 
 // returns the index of the selected path
 // for now, just return the index of the path with the longest free path length
 // if there are multiple paths with the same free path length, return the one with the smallest curvature
-int selectPath(const vector<navigation::PathOption>& path_options) {
+int selectPath(const vector<navigation::PathOption>& path_options, Eigen::Vector2f carrot_loc) {
     int selected_path = 0;
     float best_score = 0;
     for (unsigned int i = 0; i < path_options.size(); i++) {
-        float s = score(path_options[i].free_path_length, path_options[i].curvature, path_options[i].clearance);
+        double goal_dist = pow(carrot_loc.x() - path_options[i].closest_point.x(), 2) +  pow(carrot_loc.y() - path_options[i].closest_point.y(), 2);
+        float s = score(path_options[i].free_path_length, goal_dist, path_options[i].clearance);
         if (s > best_score) {
             best_score = s;
             selected_path = i;
