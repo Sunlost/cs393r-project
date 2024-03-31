@@ -29,8 +29,8 @@ public:
     pair<float, float> goal_coords_; // scaled
     Eigen::Vector2f goal_;
     Eigen::Vector2f start_;
-    voronoi_diagram<double>::cell_type* goal_cell_;
-    voronoi_diagram<double>::cell_type* start_cell_;
+    const voronoi_diagram<double>::cell_type* goal_cell_;
+    const voronoi_diagram<double>::cell_type* start_cell_;
 
     //////
 

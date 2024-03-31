@@ -217,6 +217,8 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
     vb_.insert_point(start_.x() * SCALE_FACTOR, start_.y() * SCALE_FACTOR);
     global_map_.emplace_back(line2f(start_.x(), start_.y(), start_.x(), start_.y()));
 
+    std::cout << "scaled start " << start_.x() * SCALE_FACTOR << " " << start_.y() * SCALE_FACTOR << std::endl;
+
     global_map_.insert(global_map_.begin(), map.lines.begin(), map.lines.end());
 
     // insert map geometry into the voronoi builder
@@ -279,15 +281,15 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
     bool found_start = false;
     bool found_goal = false;
     for(voronoi_diagram<double>::const_cell_iterator it = vd_.cells().begin(); it != vd_.cells().end(); ++it) {
-        voronoi_diagram<double>::cell_type cell = *it;
-        if(cell.source_index() == 0) { 
-            goal_cell_ = &cell;
-            std::cout << "found goal cell" << std::endl;
+        // voronoi_diagram<double>::cell_type cell = *it;
+        if(it->source_index() == 0) { 
+            goal_cell_ = &(*it);
+            std::cout << "found goal cell " << goal_cell_ << std::endl;
             found_goal = true;
         }
-        else if (cell.source_index() == 1) {
-            std::cout << "found start cell" << std::endl;
-            start_cell_ = &cell;
+        else if (it->source_index() == 1) {
+            start_cell_ = &(*it);
+            std::cout << "found start cell " << start_cell_ << std::endl;
             found_start = true;
         }
         
@@ -304,7 +306,7 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
     // }
 
     // add edges from each goal cell vertex to the goal
-    voronoi_diagram<double>::edge_type* goal_edge = goal_cell_->incident_edge();
+    const voronoi_diagram<double>::edge_type* goal_edge = goal_cell_->incident_edge();
     pair<float, float> goal(goal_.x(), goal_.y());
     do {
         if (goal_edge->is_primary() && goal_edge->is_finite()) {
@@ -324,7 +326,7 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
 
 
     // add edges from start cell to each connecting vertex
-    voronoi_diagram<double>::edge_type* start_edge = start_cell_->incident_edge();
+    const voronoi_diagram<double>::edge_type* start_edge = start_cell_->incident_edge();
     pair<float, float> start(start_.x(), start_.y());
     do {
         if (start_edge->is_primary() && start_edge->is_finite()) {
@@ -340,7 +342,7 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
         }
         // std::cout << "goal edge "<< goal_edge <<" incident edge " << goal_cell_->incident_edge() << " cell "<< goal_cell_<< std::endl;
         start_edge = start_edge->next();
-    } while(goal_edge != start_cell_->incident_edge());
+    } while(start_edge != start_cell_->incident_edge());
 
     // print start
     std::cout<< "start " << start.first << " " << start.second << std::endl;
@@ -355,7 +357,7 @@ void GlobalPlanner::visualize_global_plan(amrl_msgs::VisualizationMsg & viz_msg,
     for (const auto& vertex : global_path_) {
         Eigen::Vector2f p(vertex.first, vertex.second);
         // visualization::DrawCross(p, .1, color, viz_msg);
-        visualization::DrawLine(prev, p, color, viz_msg);
+        // visualization::DrawLine(prev, p, color, viz_msg);
         prev = p;
     }
     visualization::DrawCross(Eigen::Vector2f(global_path_.back().first, global_path_.back().second), .2, 0x0000ff, viz_msg);
