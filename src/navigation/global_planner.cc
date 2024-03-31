@@ -37,14 +37,44 @@ pair<float, float> GlobalPlanner::find_start_vertex(Eigen::Vector2f& curr_loc) {
     return pair<float, float>(best_vertex.x() / SCALE_FACTOR, best_vertex.y() / SCALE_FACTOR);
 }
 
+bool inside_cell(const voronoi_diagram<double>::cell_type * cell, const Eigen::Vector2f& point) {
+    bool inside = false;
+
+    // Ray casting algorithm
+    const voronoi_diagram<double>::edge_type* edge = cell->incident_edge();
+    do {
+        if (edge->is_primary() && edge->is_finite()) {
+            float x1 = edge->vertex0()->x();
+            float y1 = edge->vertex0()->y();
+            float x2 = edge->vertex1()->x();
+            float y2 = edge->vertex1()->y();
+            if (((y1 > point.y()) != (y2 > point.y())) &&
+                (point.x() < (x2 - x1) * (point.y() - y1) / (y2 - y1) + x1)) {
+                inside = !inside;
+            }
+        }
+        edge = edge->next();
+    } while(edge != cell->incident_edge());
+
+    return inside;
+}
+
 
 
 bool GlobalPlanner::get_carrot(Eigen::Vector2f& curr_loc, float curr_angle, Eigen::Vector2f* carrot_loc) {
     // decide what vertex on the path to return next
     // divide by SCALE_FACTOR to get back from "int" to float
-    
-    // return false; // TODO: REPLACE
-    return global_path_.size() > 0;
+    if (global_path_.size() == 0) {
+        return false;
+    }
+
+    if (!inside_cell(start_cell_, curr_loc)) {
+        return false;
+    }
+
+    // return the first point
+    *carrot_loc = Eigen::Vector2f(global_path_.front().first, global_path_.front().second);
+    return true;
 }
 
 
@@ -356,8 +386,8 @@ void GlobalPlanner::visualize_global_plan(amrl_msgs::VisualizationMsg & viz_msg,
     Eigen::Vector2f prev(global_path_.front().first, global_path_.front().second);
     for (const auto& vertex : global_path_) {
         Eigen::Vector2f p(vertex.first, vertex.second);
-        // visualization::DrawCross(p, .1, color, viz_msg);
-        // visualization::DrawLine(prev, p, color, viz_msg);
+        visualization::DrawCross(p, .1, color, viz_msg);
+        visualization::DrawLine(prev, p, color, viz_msg);
         prev = p;
     }
     visualization::DrawCross(Eigen::Vector2f(global_path_.back().first, global_path_.back().second), .2, 0x0000ff, viz_msg);
