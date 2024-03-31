@@ -1,0 +1,53 @@
+goal edge 0x7f47c58374b0 incident edge 0x7f47c58374b0
+goal edge 0x7f47c5837330 incident edge 0x7f47c58374b0
+goal edge 0x7f47c5836c70 incident edge 0x7f47c58374b0
+goal edge 0x7f47c5836af0 incident edge 0x7f47c58374b0
+goal edge 0x7f47c5835ef0 incident edge 0x7f47c58374b0
+goal edge 0x7f47c5835590 incident edge 0x7f47c58374b0
+goal edge 0x7f47c57ff4a0 incident edge 0x7f47c58374b0
+goal edge 0x7f47c5800220 incident edge 0x7f47c58374b0
+
+
+
+
+
+goal edge 0x7f87fff064a0 incident edge 0x7ffda4d13ec0
+goal edge 0x7f87fff07220 incident edge 0x7ffda4d13ec0
+goal edge 0x7f87fff3e4b0 incident edge 0x7ffda4d13ec0
+here 3.5 0
+goal edge 0x7f87fff3e330 incident edge 0x7ffda4d13ec0
+here 3.5 0
+goal edge 0x7f87fff3dc70 incident edge 0x7ffda4d13ec0
+here 3.5 0
+goal edge 0x7f87fff3daf0 incident edge 0x7ffda4d13ec0
+here 3.5 0
+goal edge 0x7f87fff3cef0 incident edge 0x7ffda4d13ec0
+here 3.5 0
+goal edge 0x7f87fff3c590 incident edge 0x7ffda4d13ec0
+here 3.5 0
+goal edge 0x7f87fff064a0 incident edge 0x7ffda4d13ec0
+goal edge 0x7f87fff07220 incident edge 0x7ffda4d13ec0
+goal edge 0x7f87fff3e4b0 incident edge 0x7ffda4d13ec0
+here 3.5 0
+
+
+
+goal edge 0x7f9e686b54b0 incident edge 0x7f9e686b54b0
+here 3.5 298.5 -25.6029
+goal edge 0x7f9e686b5330 incident edge 0x7f9e686b54b0
+here 3.5 129.058 138.855
+goal edge 0x7f9e686b4c70 incident edge 0x7f9e686b54b0
+here 3.5 -142.679 379.017
+goal edge 0x7f9e686b4af0 incident edge 0x7f9e686b54b0
+here 3.5 -320.088 326.658
+goal edge 0x7f9e686b3ef0 incident edge 0x7f9e686b54b0
+here 3.5 149.793 595.861
+goal edge 0x7f9e686b3590 incident edge 0x7f9e686b54b0
+here 3.5 -nan -nan
+goal edge 0x7f9e6867d4a0 incident edge 0x7f9e686b54b0
+goal edge 0x7f9e6867e220 incident edge 0x7f9e686b54b0
+here 4
+done initializing
+4384
+visualizing
+done

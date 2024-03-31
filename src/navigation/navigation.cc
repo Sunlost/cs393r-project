@@ -31,11 +31,11 @@
 #include "shared/math/math_util.h"
 #include "shared/util/timer.h"
 #include "shared/ros/ros_helpers.h"
-// #include "navigation.h"
+#include "navigation.h"
 #include "visualization/visualization.h"
 #include "path_options.h"
 #include "latency_compensation.h"
-// #include "global_planner.h" 
+#include "global_planner.h" 
 
 using Eigen::Vector2f;
 using amrl_msgs::AckermannCurvatureDriveMsg;
@@ -92,7 +92,8 @@ void Navigation::SetNavGoal(const Vector2f& loc, float angle) {
   // time to voronoi
   nav_goal_loc_ = loc;
   nav_goal_angle_ = angle;
-  global_planner_.initialize(map_, nav_goal_loc_.x(), nav_goal_loc_.y());
+  // global_planner_.initialize(map_, nav_goal_loc_.x(), nav_goal_loc_.y());
+  global_planner_.set_goal(nav_goal_loc_.x(), nav_goal_loc_.y());
   goal_established_ = true;
 
 
@@ -193,7 +194,9 @@ void Navigation::Run() {
   Eigen::Vector2f carrot_loc = Eigen::Vector2f::Zero();
   bool carrot_found = global_planner_.get_carrot(robot_loc_, robot_angle_, &carrot_loc);
   if(!carrot_found) {
-    global_planner_.plan_global_path(robot_loc_, robot_angle_);
+    global_planner_.set_start(robot_loc_.x(), robot_loc_.y());
+    global_planner_.construct_map(map_);
+    global_planner_.plan_global_path();
     carrot_found = global_planner_.get_carrot(robot_loc_, robot_angle_, &carrot_loc);
     assert(carrot_found);
   }
@@ -220,9 +223,10 @@ void Navigation::Run() {
   // Plot the closest point in purple
   visualization::DrawLine(path_options[best_path].closest_point, Vector2f(0, 1/path_options[best_path].curvature), 0xFF00FF, local_viz_msg_);
   // for debugging
+  global_planner_.visualize_voronoi(global_viz_msg_);
+  global_planner_.visualize_global_plan(global_viz_msg_);
   
     
-  visualization::DrawPoint(Vector2f(0, 1/path_options[best_path].curvature), 0x0000FF, local_viz_msg_);
 
   // Add timestamps to all messages.
   local_viz_msg_.header.stamp = ros::Time::now();

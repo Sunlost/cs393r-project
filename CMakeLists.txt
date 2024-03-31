@@ -61,6 +61,12 @@ ADD_EXECUTABLE(eigen_tutorial
 
 ADD_EXECUTABLE(simple_queue_test
                src/navigation/simple_queue_test.cc)
+ROSBUILD_ADD_EXECUTABLE(planner_test
+                        src/navigation/navigation.cc
+                        src/navigation/path_options.cc
+                        src/navigation/global_planner.cc
+               src/navigation/planner_test.cc)
+TARGET_LINK_LIBRARIES(planner_test shared_library ${libs})
 
 ADD_EXECUTABLE(cimg_example
                src/cimg_example.cc)
