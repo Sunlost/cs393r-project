@@ -198,7 +198,7 @@ void Navigation::Run() {
     assert(carrot_found);
   }
 
-  vector<PathOption> path_options = samplePathOptions(31, point_cloud_, robot_config_, carrot_loc);
+  vector<PathOption> path_options = samplePathOptions(31, point_cloud_, robot_config_, carrot_loc, robot_loc_);
   int best_path = selectPath(path_options, carrot_loc);
 
   drive_msg_.curvature = path_options[best_path].curvature;

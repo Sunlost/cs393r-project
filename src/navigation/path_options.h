@@ -17,7 +17,8 @@ void setPathOption(navigation::PathOption& path_option,
 vector<navigation::PathOption> samplePathOptions(int num_options,
                                                     const vector<Eigen::Vector2f>& point_cloud,
                                                     const navigation::NavigationParams& robot_config,
-                                                    Eigen::Vector2f carrot_loc);
+                                                    Eigen::Vector2f carrot_loc,
+                                                    Eigen::Vector2f curr_loc);
 
 int selectPath(const vector<navigation::PathOption>& path_options, Eigen::Vector2f carrot_loc);
 
