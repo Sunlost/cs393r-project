@@ -249,7 +249,7 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
 
     std::cout << "scaled start " << start_.x() * SCALE_FACTOR << " " << start_.y() * SCALE_FACTOR << std::endl;
 
-    global_map_.insert(global_map_.begin(), map.lines.begin(), map.lines.end());
+    global_map_.insert(global_map_.end(), map.lines.begin(), map.lines.end());
 
     // insert map geometry into the voronoi builder
     for (size_t i = 0; i < map.lines.size(); i++) {
