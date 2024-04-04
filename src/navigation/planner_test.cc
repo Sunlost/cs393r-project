@@ -31,7 +31,7 @@ int main(int argc, char** argv) {
     vector_map::VectorMap map_;
     map_.Load(map_name);
     GlobalPlanner global_planner_;
-    global_planner_.construct_map(map_);
+    // global_planner_.construct_map(map_);
 
     Eigen::Vector2f start(5.53, 8.29);
 

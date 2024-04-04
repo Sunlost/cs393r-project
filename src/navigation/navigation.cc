@@ -36,7 +36,8 @@
 #include "path_options.h"
 #include "latency_compensation.h"
 #include "global_planner.h" 
-
+#include <assert.h>
+#include <signal.h>
 using Eigen::Vector2f;
 using amrl_msgs::AckermannCurvatureDriveMsg;
 using amrl_msgs::VisualizationMsg;
@@ -94,8 +95,15 @@ void Navigation::SetNavGoal(const Vector2f& loc, float angle) {
   nav_goal_angle_ = angle;
   // global_planner_.initialize(map_, nav_goal_loc_.x(), nav_goal_loc_.y());
   global_planner_.set_goal(nav_goal_loc_.x(), nav_goal_loc_.y());
-  goal_established_ = true;
 
+  // in case of repeated SetNavGoal calls
+  if (goal_established_) {
+    global_planner_.set_start(robot_loc_.x(), robot_loc_.y());
+    global_planner_.construct_map(map_, global_viz_msg_);
+    global_planner_.plan_global_path();
+  }
+  
+  goal_established_ = true;
 
 
   // either
@@ -192,15 +200,27 @@ void Navigation::Run() {
 
 
   Eigen::Vector2f carrot_loc = Eigen::Vector2f::Zero();
+
+  // can get around crashing by replanning at every time step but that's lame
+  // global_planner_.set_start(robot_loc_.x(), robot_loc_.y());
+  //   global_planner_.construct_map(map_, global_viz_msg_);
+  //   global_planner_.plan_global_path();
   bool carrot_found = global_planner_.get_carrot(robot_loc_, robot_angle_, &carrot_loc);
+
   if(!carrot_found) {
+    cout << "replan" << endl;
     global_planner_.set_start(robot_loc_.x(), robot_loc_.y());
-    global_planner_.construct_map(map_);
+    global_planner_.construct_map(map_, global_viz_msg_);
     global_planner_.plan_global_path();
     carrot_found = global_planner_.get_carrot(robot_loc_, robot_angle_, &carrot_loc);
-    assert(carrot_found);
-  }
+    cout << "carrot loc" << carrot_found << " " << carrot_loc.x() << " " << carrot_loc.y() << endl;
 
+    // assertions don't do anything lmao. need to pick a better way for everything to crash and burn
+    if(!carrot_found) {
+      raise(SIGSEGV);
+    }
+  }
+  visualization::DrawCross(carrot_loc, 3.5, 0x800080, global_viz_msg_);
   vector<PathOption> path_options = samplePathOptions(31, point_cloud_, robot_config_, carrot_loc);
   int best_path = selectPath(path_options, carrot_loc);
 
@@ -223,7 +243,7 @@ void Navigation::Run() {
   // Plot the closest point in purple
   visualization::DrawLine(path_options[best_path].closest_point, Vector2f(0, 1/path_options[best_path].curvature), 0xFF00FF, local_viz_msg_);
   // for debugging
-  global_planner_.visualize_voronoi(global_viz_msg_);
+  // global_planner_.visualize_voronoi(global_viz_msg_);
   global_planner_.visualize_global_plan(global_viz_msg_);
   
     

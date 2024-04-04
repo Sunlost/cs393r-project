@@ -52,7 +52,7 @@ public:
     void set_start(float start_x, float start_y);
 
     // initialization function. builds the voronoi diagram.
-    void construct_map(const vector_map::VectorMap& map);
+    void construct_map(const vector_map::VectorMap& map, amrl_msgs::VisualizationMsg & viz_msg);
 
     void visualize_global_plan(amrl_msgs::VisualizationMsg & viz_msg, uint32_t color = 0xff00ff);
     void visualize_voronoi(amrl_msgs::VisualizationMsg & viz_msg, uint32_t color = 0xff0000);
