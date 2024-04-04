@@ -105,7 +105,6 @@ void GlobalPlanner::plan_global_path() {
     SimpleQueue<pair<float, float>, double> frontier;
     frontier.Push(start, 0);
 
-
     map<pair<float, float>, pair<float, float>> parent;
     parent[start] = start;
 
@@ -129,32 +128,37 @@ void GlobalPlanner::plan_global_path() {
                 // insert A' into parent if needed, new value is A
                 // add A' to queue, with priority value [ new cost + heuristic(A') ]
 
-    while(!frontier.Empty()) {
-        pair<float, float> cur = frontier.Pop();
-        if(cur == goal) {
-            std::cout << "found goal!" <<std::endl;
+    std::cout << "starting a* search!" << std::endl;
 
+    while(!frontier.Empty()) {
+        // std::cout << std::endl << std::endl << std::endl;
+
+        pair<float, float> cur = frontier.Pop();
+        // std::cout << "popped! cur x: " << cur.first << " cur y: " << cur.second << std::endl;
+
+        if(cur == goal) {
+            std::cout << "found goal!" << std::endl;
             break;
         }
         
         list<pair<float, float>> adj_list = voronoi_edge_map_[cur];
 
-        // std::cout<< "adj list size " << adj_list.size() << std::endl;
-        // print curr
-        // std::cout<< "curr " << cur.first << " " << cur.second << std::endl;
-    
+        // std::cout<< "adj list size " << adj_list.size() << std::endl << std::endl;
         
         for(list<pair<float, float>>::iterator it = adj_list.begin(); it != adj_list.end(); it++) {
             pair<float, float> adj = *it;
-            double dist = pow(cur.first - adj.first, 2) + pow(cur.second - adj.second, 2);
+            // std::cout << std::endl << "got an adjacent node! x: " << adj.first << " y: " << adj.second << std::endl;
+            double dist = sqrt(pow(cur.first - adj.first, 2) + pow(cur.second - adj.second, 2));
             double new_cost = cost[cur] + dist;
+            // std::cout << "cost[cur] (" << cost[cur] << ") + dist (" << dist << ") = new_cost (" << new_cost << ")" << std::endl;
             map<pair<float, float>, double>::iterator entry = cost.find(adj);
             if(entry == cost.end() || entry->second > new_cost) {
                 cost[adj] = new_cost;
                 parent[adj] = cur;
                 // TODO: check if we can memoize this somehow..?
-                double heur_cost = pow(goal.first - adj.first, 2) + pow(goal.second - adj.second, 2);
+                double heur_cost = sqrt(pow(goal.first - adj.first, 2) + pow(goal.second - adj.second, 2));
                 frontier.Push(adj, new_cost + heur_cost);
+                // std::cout << "pushing adj to queue with total_cost (" << new_cost + heur_cost << ") = new_cost + heur_cost (" << heur_cost << ")" << std::endl; 
             }
         }
 
@@ -166,10 +170,10 @@ void GlobalPlanner::plan_global_path() {
     global_path_.clear();
     pair<float, float> backtrack = goal;
     do {
-        std::cout << "backtrack " << backtrack.first << " " << backtrack.second << std::endl;
+        // std::cout << "backtrack " << backtrack.first << " " << backtrack.second << std::endl;
         // check if back track is in parent
         if(parent.count(backtrack) == 0) {
-            std::cout << "backtrack not in parent" << std::endl;
+            // std::cout << "backtrack not in parent" << std::endl;
             break;
         }
         global_path_.push_front(backtrack);
@@ -177,7 +181,7 @@ void GlobalPlanner::plan_global_path() {
     } while(backtrack != start);
     global_path_.push_front(start);
 
-    std::cout << "done with path" << std::endl;
+    // std::cout << "done with path" << std::endl;
 
     // [MAYBE FUTURE TODO:] smooth the path along those vertices 
         // our simple carrot follower strategy handles this local smoothing for now.
@@ -247,7 +251,7 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
     vb_.insert_point(start_.x() * SCALE_FACTOR, start_.y() * SCALE_FACTOR);
     global_map_.emplace_back(line2f(start_.x(), start_.y(), start_.x(), start_.y()));
 
-    std::cout << "scaled start " << start_.x() * SCALE_FACTOR << " " << start_.y() * SCALE_FACTOR << std::endl;
+    // std::cout << "scaled start " << start_.x() * SCALE_FACTOR << " " << start_.y() * SCALE_FACTOR << std::endl;
 
     global_map_.insert(global_map_.end(), map.lines.begin(), map.lines.end());
 
@@ -267,7 +271,7 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
 
     // make our edge map representation
     std::map<pair<float, float>, list<pair<float, float>>> edge_map;
-    std::cout<< "here 1" << std::endl;
+    // std::cout<< "here 1" << std::endl;
 
     // add mappings for each edge to our internal edge representation
     for (voronoi_diagram<double>::const_vertex_iterator it = vd_.vertices().begin(); it != vd_.vertices().end(); ++it) {
@@ -302,10 +306,10 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
             // continue iterating
             edge = edge->rot_next();
         } while(edge != vertex.incident_edge());
-        std::cout << "list size " << edge_map[this_vertex].size() << " | " << edge_map[this_vertex].size() << " | " <<this_vertex.first<< std::endl;
+        // std::cout << "list size " << edge_map[this_vertex].size() << " | " << edge_map[this_vertex].size() << " | " <<this_vertex.first<< std::endl;
     }
 
-    std::cout<< "here 2" << std::endl;
+    // std::cout<< "here 2" << std::endl;
 
     // find the cell the goal point "obstacle" generated. 
     bool found_start = false;
@@ -314,12 +318,12 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
         // voronoi_diagram<double>::cell_type cell = *it;
         if(it->source_index() == 0) { 
             goal_cell_ = &(*it);
-            std::cout << "found goal cell " << goal_cell_ << std::endl;
+            // std::cout << "found goal cell " << goal_cell_ << std::endl;
             found_goal = true;
         }
         else if (it->source_index() == 1) {
             start_cell_ = &(*it);
-            std::cout << "found start cell " << start_cell_ << std::endl;
+            // std::cout << "found start cell " << start_cell_ << std::endl;
             found_start = true;
         }
         
@@ -328,7 +332,7 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
         }
     }
 
-    std::cout<< "here 3" << std::endl;
+    // std::cout<< "here 3" << std::endl;
 
     // iterate through edge_map and print the size of the list
     // for (std::map<pair<float, float>, list<pair<float, float>>>::iterator it = edge_map.begin(); it != edge_map.end(); ++it) {
@@ -347,7 +351,7 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
                 pair<float, float> this_vertex(goal_edge->vertex0()->x() / SCALE_FACTOR, goal_edge->vertex0()->y() / SCALE_FACTOR);
                 edge_map[this_vertex].push_front(goal);
                 // print this_vertex and print if 10, 10 is in the list
-                std::cout << "goal this_vertex " << this_vertex.first << " " << this_vertex.second << std::endl;
+                // std::cout << "goal this_vertex " << this_vertex.first << " " << this_vertex.second << std::endl;
             }
         }
         // std::cout << "goal edge "<< goal_edge <<" incident edge " << goal_cell_->incident_edge() << " cell "<< goal_cell_<< std::endl;
@@ -367,7 +371,7 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
                 pair<float, float> this_vertex(start_edge->vertex1()->x() / SCALE_FACTOR, start_edge->vertex1()->y() / SCALE_FACTOR);
                 edge_map[start].push_back(this_vertex);
                 // print this_vertex and print if 10, 10 is in the list
-                std::cout << "start this_vertex " << this_vertex.first << " " << this_vertex.second << std::endl;
+                // std::cout << "start this_vertex " << this_vertex.first << " " << this_vertex.second << std::endl;
             }
         }
         // std::cout << "goal edge "<< goal_edge <<" incident edge " << goal_cell_->incident_edge() << " cell "<< goal_cell_<< std::endl;
@@ -375,11 +379,11 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
     } while(start_edge != start_cell_->incident_edge());
 
     // print start
-    std::cout<< "start " << start.first << " " << start.second << std::endl;
+    // std::cout<< "start " << start.first << " " << start.second << std::endl;
 
     // replace our old map representation (if it exists) with the new map representation
     voronoi_edge_map_ = edge_map;
-    std::cout<< "done initializing" << std::endl;
+    // std::cout<< "done initializing" << std::endl;
 }
 
 void GlobalPlanner::visualize_global_plan(amrl_msgs::VisualizationMsg & viz_msg, uint32_t color) {
