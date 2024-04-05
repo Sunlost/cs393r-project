@@ -37,7 +37,7 @@ pair<float, float> GlobalPlanner::find_start_vertex(Eigen::Vector2f& curr_loc) {
     return pair<float, float>(best_vertex.x() / SCALE_FACTOR, best_vertex.y() / SCALE_FACTOR);
 }
 
-bool inside_cell(const voronoi_diagram<double>::cell_type * cell, const Eigen::Vector2f& point) {
+bool inside_cell(const voronoi_diagram<double>::cell_type * cell, const Eigen::Vector2f& point, amrl_msgs::VisualizationMsg & viz_msg) {
     bool inside = false;
 
     // Ray casting algorithm
@@ -48,14 +48,14 @@ bool inside_cell(const voronoi_diagram<double>::cell_type * cell, const Eigen::V
             float y1 = edge->vertex0()->y();
             float x2 = edge->vertex1()->x();
             float y2 = edge->vertex1()->y();
-            std::cout<< "maybescalefactor " << " x1: " << x1 << " y1: " << y1 << " x2: " << x2 << " y2:" << y2 << " pointx: "<< point.x() << " pointy: " << point.y() << std::endl;
+            Eigen::Vector2f p0(x1 / 100, y1 / 100);
+            Eigen::Vector2f p1(x2 / 100, y2 / 100);
+            visualization::DrawLine(p0, p1, 0x880000, viz_msg);
+            // std::cout<< "maybescalefactor " << " x1: " << x1 << " y1: " << y1 << " x2: " << x2 << " y2:" << y2 << " pointx: "<< point.x() << " pointy: " << point.y() << std::endl;
             if (((y1 > point.y()) != (y2 > point.y())) &&
                 (point.x() < (x2 - x1) * (point.y() - y1) / (y2 - y1) + x1)) {
                 inside = !inside;
-                std::cout<< "inside cell? " << inside << " " << std::endl;
-            // } else {
-            } else if (!edge->is_finite()) {
-                std::cout<< "cell had infinite edge " << std::endl;
+                std::cout<< "inside cell? " << inside << " " << edge << " " << std::endl;
             }
         }
         edge = edge->next();
@@ -66,7 +66,7 @@ bool inside_cell(const voronoi_diagram<double>::cell_type * cell, const Eigen::V
 
 
 
-bool GlobalPlanner::get_carrot(Eigen::Vector2f& curr_loc, float curr_angle, Eigen::Vector2f* carrot_loc) {
+bool GlobalPlanner::get_carrot(Eigen::Vector2f& curr_loc, float curr_angle, Eigen::Vector2f* carrot_loc, amrl_msgs::VisualizationMsg & viz_msg) {
     // decide what vertex on the path to return next
     // divide by SCALE_FACTOR to get back from "int" to float
     if (global_path_.size() == 0) {
@@ -77,7 +77,7 @@ bool GlobalPlanner::get_carrot(Eigen::Vector2f& curr_loc, float curr_angle, Eige
     // for some reason, this is invalidating plans too often. it doesn't think we're in a cell?
     // also, when one of the edges is infinite, it doesn't think we're in a cell
     Eigen::Vector2f scaled_curr(curr_loc.x() * SCALE_FACTOR, curr_loc.y() * SCALE_FACTOR);
-    if (!inside_cell(start_cell_, scaled_curr)) {
+    if (!inside_cell(start_cell_, scaled_curr, viz_msg)) {
         std::cout << "not inside start cell " << start_cell_ << std::endl;
         return false;
     }
@@ -190,7 +190,7 @@ void GlobalPlanner::plan_global_path() {
     } while(backtrack != start);
     global_path_.push_front(start);
 
-    std::cout << "done with path" << std::endl;
+    // std::cout << "done with path" << std::endl;
 
     // [MAYBE FUTURE TODO:] smooth the path along those vertices 
         // our simple carrot follower strategy handles this local smoothing for now.
@@ -243,6 +243,23 @@ void GlobalPlanner::set_start(float start_x, float start_y) {
     start_ = Eigen::Vector2f(start_x, start_y);
 }
 
+bool GlobalPlanner::reached_goal(Eigen::Vector2f& curr_loc, amrl_msgs::VisualizationMsg & viz_msg) {
+    // decide what vertex on the path to return next
+    // divide by SCALE_FACTOR to get back from "int" to float
+    if (global_path_.size() == 0) {
+        return false;
+    }
+    
+    // hm
+    // I must be misunderstanding this
+    Eigen::Vector2f scaled_curr(curr_loc.x() * SCALE_FACTOR, curr_loc.y() * SCALE_FACTOR);
+    if (inside_cell(goal_cell_, scaled_curr, viz_msg)) {
+        return true;
+    }
+
+    return false;
+}
+
 void GlobalPlanner::construct_map(const vector_map::VectorMap& map, amrl_msgs::VisualizationMsg & viz_msg) {
     vb_.clear();
     vd_.clear();
@@ -280,7 +297,7 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map, amrl_msgs::V
 
     // make our edge map representation
     std::map<pair<float, float>, list<pair<float, float>>> edge_map;
-    std::cout<< "here 1" << std::endl;
+    // std::cout<< "here 1" << std::endl;
 
     // add mappings for each edge to our internal edge representation
     for (voronoi_diagram<double>::const_vertex_iterator it = vd_.vertices().begin(); it != vd_.vertices().end(); ++it) {
@@ -315,10 +332,10 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map, amrl_msgs::V
             // continue iterating
             edge = edge->rot_next();
         } while(edge != vertex.incident_edge());
-        std::cout << "list size " << edge_map[this_vertex].size() << " | " << edge_map[this_vertex].size() << " | " <<this_vertex.first<< std::endl;
+        // std::cout << "list size " << edge_map[this_vertex].size() << " | " << edge_map[this_vertex].size() << " | " <<this_vertex.first<< std::endl;
     }
 
-    std::cout<< "here 2" << std::endl;
+    // std::cout<< "here 2" << std::endl;
 
     // find the cell the goal point "obstacle" generated. 
     bool found_start = false;
@@ -363,6 +380,10 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map, amrl_msgs::V
                 std::cout << "goal this_vertex " << this_vertex.first << " " << this_vertex.second << std::endl;
             }
         }
+        // Eigen::Vector2f p0(goal_edge->vertex0()->x() / SCALE_FACTOR, goal_edge->vertex0()->y() / SCALE_FACTOR);
+        // Eigen::Vector2f p1(goal_edge->vertex1()->x() / SCALE_FACTOR, goal_edge->vertex1()->y() / SCALE_FACTOR);
+        // visualization::DrawLine(p0, p1, 0x880000, viz_msg);
+
         // std::cout << "goal edge "<< goal_edge <<" incident edge " << goal_cell_->incident_edge() << " cell "<< goal_cell_<< std::endl;
         goal_edge = goal_edge->next();
     } while(goal_edge != goal_cell_->incident_edge());
@@ -383,10 +404,10 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map, amrl_msgs::V
                 std::cout << "start this_vertex " << this_vertex.first << " " << this_vertex.second << std::endl;
             }
         }
-        Eigen::Vector2f p0(start_edge->vertex0()->x() / SCALE_FACTOR, start_edge->vertex0()->y() / SCALE_FACTOR);
-        Eigen::Vector2f p1(start_edge->vertex1()->x() / SCALE_FACTOR, start_edge->vertex1()->y() / SCALE_FACTOR);
-        visualization::DrawLine(p0, p1, 0x800020, viz_msg);
-        // std::cout << "goal edge "<< goal_edge <<" incident edge " << goal_cell_->incident_edge() << " cell "<< goal_cell_<< std::endl;
+        // Eigen::Vector2f p0(start_edge->vertex0()->x() / SCALE_FACTOR, start_edge->vertex0()->y() / SCALE_FACTOR);
+        // Eigen::Vector2f p1(start_edge->vertex1()->x() / SCALE_FACTOR, start_edge->vertex1()->y() / SCALE_FACTOR);
+        // visualization::DrawLine(p0, p1, 0x800020, viz_msg);
+        std::cout << "goal edge "<< goal_edge <<" incident edge " << goal_cell_->incident_edge() << " cell "<< goal_cell_<< std::endl;
         start_edge = start_edge->next();
     } while(start_edge != start_cell_->incident_edge());
 

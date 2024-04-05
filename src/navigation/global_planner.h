@@ -43,7 +43,9 @@ public:
     pair<float, float> find_start_vertex(Eigen::Vector2f& curr_loc);
 
     // get a carrot for the local navigation code to work towards
-    bool get_carrot(Eigen::Vector2f& curr_loc, float curr_angle, Eigen::Vector2f* carrot_loc);
+    bool get_carrot(Eigen::Vector2f& curr_loc, float curr_angle, Eigen::Vector2f* carrot_loc, amrl_msgs::VisualizationMsg & viz_msg);
+
+    bool reached_goal(Eigen::Vector2f& curr_loc, amrl_msgs::VisualizationMsg & viz_msg);
 
     // run a* to plan a global path
     void plan_global_path();

@@ -199,34 +199,39 @@ void Navigation::Run() {
   // else, run 1dtoc on our carrot
 
 
-  Eigen::Vector2f carrot_loc = Eigen::Vector2f::Zero();
+  Eigen::Vector2f carrot_loc = robot_loc_;
 
   // can get around crashing by replanning at every time step but that's lame
   // global_planner_.set_start(robot_loc_.x(), robot_loc_.y());
   //   global_planner_.construct_map(map_, global_viz_msg_);
   //   global_planner_.plan_global_path();
-  bool carrot_found = global_planner_.get_carrot(robot_loc_, robot_angle_, &carrot_loc);
+  bool carrot_found = global_planner_.get_carrot(robot_loc_, robot_angle_, &carrot_loc, global_viz_msg_);
 
   if(!carrot_found) {
     cout << "replan" << endl;
     global_planner_.set_start(robot_loc_.x(), robot_loc_.y());
     global_planner_.construct_map(map_, global_viz_msg_);
     global_planner_.plan_global_path();
-    carrot_found = global_planner_.get_carrot(robot_loc_, robot_angle_, &carrot_loc);
+    carrot_found = global_planner_.get_carrot(robot_loc_, robot_angle_, &carrot_loc, global_viz_msg_);
     cout << "carrot loc" << carrot_found << " " << carrot_loc.x() << " " << carrot_loc.y() << endl;
 
     // assertions don't do anything lmao. need to pick a better way for everything to crash and burn
-    if(!carrot_found) {
-      raise(SIGSEGV);
-    }
+    // if(!carrot_found) {
+    //   raise(SIGSEGV);
+    // }
   }
   visualization::DrawCross(carrot_loc, 3.5, 0x800080, global_viz_msg_);
-  vector<PathOption> path_options = samplePathOptions(31, point_cloud_, robot_config_, carrot_loc);
-  int best_path = selectPath(path_options, carrot_loc);
+  vector<PathOption> path_options = samplePathOptions(31, point_cloud_, robot_config_, carrot_loc - robot_loc_);
+  int best_path = selectPath(path_options, carrot_loc - robot_loc_);
 
   drive_msg_.curvature = path_options[best_path].curvature;
-  drive_msg_.velocity = run1DTimeOptimalControl(path_options[best_path].free_path_length, current_speed, robot_config_);
-	
+	if(global_planner_.reached_goal(robot_loc_, global_viz_msg_)) {
+  // if ((robot_loc_ - nav_goal_loc_).norm() < 0.5){
+    drive_msg_.velocity = 0;
+  } else {
+    drive_msg_.velocity = run1DTimeOptimalControl(path_options[best_path].free_path_length, current_speed, robot_config_);
+
+  }
   // cout << drive_msg_.curvature << " " << drive_msg_.velocity << endl;
 
   // visualization here
