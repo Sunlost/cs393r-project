@@ -179,6 +179,11 @@ void Navigation::Run() {
 
   // If odometry has not been initialized or goal has not been set, we can't do anything.
   if (!odom_initialized_ || !goal_established_) return;
+  	// if(global_planner_.reached_goal(robot_loc_, global_viz_msg_)) {
+  if ((robot_loc_ - nav_goal_loc_).squaredNorm() < 0.25){
+    drive_msg_.velocity = 0;
+    return;
+  }
 
   // The control iteration goes here. 
   // Feel free to make helper functions to structure the control appropriately.
@@ -225,28 +230,26 @@ void Navigation::Run() {
   int best_path = selectPath(path_options, carrot_loc - robot_loc_);
 
   drive_msg_.curvature = path_options[best_path].curvature;
-	if(global_planner_.reached_goal(robot_loc_, global_viz_msg_)) {
-  // if ((robot_loc_ - nav_goal_loc_).norm() < 0.5){
-    drive_msg_.velocity = 0;
-  } else {
-    drive_msg_.velocity = run1DTimeOptimalControl(path_options[best_path].free_path_length, current_speed, robot_config_);
+  drive_msg_.velocity = run1DTimeOptimalControl(path_options[best_path].free_path_length, current_speed, robot_config_);
 
-  }
+  
   // cout << drive_msg_.curvature << " " << drive_msg_.velocity << endl;
 
   // visualization here
   visualization::DrawRectangle(Vector2f(robot_config_.length/2 - robot_config_.base_link_offset, 0),
       robot_config_.length, robot_config_.width, 0, 0x00FF00, local_viz_msg_);
   // Draw all path options in blue
-  for (unsigned int i = 0; i < path_options.size(); i++) {
-      visualization::DrawPathOption(path_options[i].curvature, path_options[i].free_path_length, 0, 0x0000FF, false, local_viz_msg_);
-  }
+  // for (unsigned int i = 0; i < path_options.size(); i++) {
+  //     visualization::DrawPathOption(path_options[i].curvature, path_options[i].free_path_length, 0, 0x0000FF, false, local_viz_msg_);
+  // }
   // Draw the best path in red
-  visualization::DrawPathOption(path_options[best_path].curvature, path_options[best_path].free_path_length, path_options[best_path].clearance, 0xFF0000, true, local_viz_msg_);
+  // visualization::DrawPathOption(path_options[best_path].curvature, path_options[best_path].free_path_length, path_options[best_path].clearance, 0xFF0000, true, local_viz_msg_);
 // Find the closest point in the point cloud
 
   // Plot the closest point in purple
-  visualization::DrawLine(path_options[best_path].closest_point, Vector2f(0, 1/path_options[best_path].curvature), 0xFF00FF, local_viz_msg_);
+    visualization::DrawCross(path_options[best_path].closest_point, .4, 0xFF00FF, local_viz_msg_);
+
+  // visualization::DrawLine(path_options[best_path].closest_point, Vector2f(0, 1/path_options[best_path].curvature), 0xFF00FF, local_viz_msg_);
   // for debugging
   // global_planner_.visualize_voronoi(global_viz_msg_);
   global_planner_.visualize_global_plan(global_viz_msg_);

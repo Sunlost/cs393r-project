@@ -63,7 +63,7 @@ void setPathOption(navigation::PathOption& path_option,
                     clearance_p = clearance_cap; // set clearance to c_max because we don't care at some point
                 if (clearance_p < path_option.clearance) {
                     path_option.clearance = clearance_p;
-                    //path_option.closest_point = p;
+                    path_option.obstruction = p;
                 }
             }
         }
@@ -265,8 +265,8 @@ vector<navigation::PathOption> samplePathOptions(int num_options,
 
 float score(float free_path_length, float goal_dist, float clearance) {
     const float w1 = 1;
-    const float w2 = 0;
-    const float w3 = 0.1;
+    const float w2 = -.01;
+    const float w3 = 15;
     // TODO: currently we are weighting this 0 but will have to tune this later
     // float score = w1*free_path_length + w2 * goal_dist + w3 * clearance;
     // std::cout << "fpl weight " << w1*free_path_length/score << "goal dist weight " << (w2 * goal_dist) / score << "clearance weight " << (w3 * clearance) / score << " final score "<< score <<endl;
@@ -288,6 +288,7 @@ int selectPath(const vector<navigation::PathOption>& path_options, Eigen::Vector
         }
         // std::cout << "selected path fpl:" << path_options[selected_path].free_path_length << " goal dist: " << pow(robot_rel_carrot.x() - path_options[selected_path].closest_point.x(), 2) +  pow(robot_rel_carrot.y() - path_options[selected_path].closest_point.y(), 2) << " clearance: " << path_options[selected_path].clearance << std::endl;
     }
+    std::cout << "closest point was what now " << path_options[selected_path].closest_point.x() << path_options[selected_path].closest_point.y() << std::endl;
     return selected_path;
 }
 
