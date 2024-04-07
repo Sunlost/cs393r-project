@@ -225,7 +225,7 @@ void Navigation::Run() {
       raise(SIGSEGV);
     }
   }
-  visualization::DrawCross(carrot_loc, 3.5, 0x800080, global_viz_msg_);
+  visualization::DrawCross(carrot_loc, 1, 0x800080, global_viz_msg_);
   vector<PathOption> path_options = samplePathOptions(31, point_cloud_, robot_config_, carrot_loc - robot_loc_);
   int best_path = selectPath(path_options, carrot_loc - robot_loc_);
 
