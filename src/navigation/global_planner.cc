@@ -28,6 +28,12 @@ using std::vector;
 using geometry::line2f;
 
 
+// FOR DEBUGGING:
+    const bool print = false;
+    const bool print2 = false;
+    const bool print3 = false;
+
+
 ///////////////////////////////////////////////////////////////////////////////
 //                             PRIVATE FUNCTIONS                             //
 ///////////////////////////////////////////////////////////////////////////////
@@ -55,6 +61,8 @@ float projected_dist(const Eigen::Vector2f& point, const line2f& line) {
 
 // returns smallest gap size between two lines
 float get_gap_size(const line2f &c1, const line2f &c2) {
+        return 1.0; // TODO: REMOVE
+    
     // get the minimum distance between the two lines
     float d1 = projected_dist(c1.p0, c2);
     float d2 = projected_dist(c1.p1, c2);
@@ -90,6 +98,25 @@ bool inside_cell(const voronoi_diagram<double>::cell_type * cell, const Eigen::V
 }
 
 
+
+// 
+bool kinematic_feasiblity_check(const vector_map::VectorMap& map, line2f line) {
+        return true; // TODO: REMOVE
+
+    for(uint64_t i = 0; i < map.lines.size(); i++) {
+        if(map.lines[i].Intersects(line)) return false;
+    }
+    return true;
+}
+
+
+
+//
+bool is_valid_point(const voronoi_diagram<double>::vertex_type* point) {
+    return !std::isnan(point->x()) && !std::isnan(point->y()) && !std::isinf(point->x()) && !std::isinf(point->y());
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////
 //                             PUBLIC FUNCTIONS                              //
 ///////////////////////////////////////////////////////////////////////////////
@@ -97,6 +124,8 @@ bool inside_cell(const voronoi_diagram<double>::cell_type * cell, const Eigen::V
 
 // sets the goal point
 void GlobalPlanner::set_goal(float goal_x, float goal_y) {
+    // goal_x = 36;
+    // goal_y = 10;
     goal_coords_ = pair<float, float>(goal_x * SCALE_FACTOR, goal_y * SCALE_FACTOR);
     goal_ = Eigen::Vector2f(goal_x, goal_y);
 }
@@ -105,6 +134,8 @@ void GlobalPlanner::set_goal(float goal_x, float goal_y) {
 
 // sets the start point
 void GlobalPlanner::set_start(float start_x, float start_y) {
+    // start_x = 36;
+    // start_y = 20;
     start_ = Eigen::Vector2f(start_x, start_y);
 }
 
@@ -117,11 +148,11 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
     global_map_.clear();
 
     // insert the goal point into the voronoi builder
-    vb_.insert_point(goal_coords_.first, goal_coords_.second);
+    vb_.insert_segment(goal_coords_.first, goal_coords_.second, goal_coords_.first, goal_coords_.second);
     global_map_.emplace_back(line2f(goal_.x(), goal_.y(), goal_.x(), goal_.y()));
 
     // insert start point into the voronoi builder
-    vb_.insert_point(start_.x() * SCALE_FACTOR, start_.y() * SCALE_FACTOR);
+    vb_.insert_segment(start_.x() * SCALE_FACTOR, start_.y() * SCALE_FACTOR, start_.x() * SCALE_FACTOR, start_.y() * SCALE_FACTOR);
     global_map_.emplace_back(line2f(start_.x(), start_.y(), start_.x(), start_.y()));
 
     global_map_.insert(global_map_.end(), map.lines.begin(), map.lines.end());
@@ -129,13 +160,19 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
     // insert map geometry into the voronoi builder
     for (size_t i = 0; i < map.lines.size(); i++) {
         const line2f map_line = map.lines[i];
-        vb_.insert_segment(
+        uint64_t index = vb_.insert_segment(
             map_line.p0.x() * SCALE_FACTOR,
             map_line.p0.y() * SCALE_FACTOR,
             map_line.p1.x() * SCALE_FACTOR,
             map_line.p1.y() * SCALE_FACTOR
         );
+        if(print) std::cout << "added line to vb: " << map_line.p0.x() * SCALE_FACTOR << " " << map_line.p0.y() * SCALE_FACTOR << 
+          " " << map_line.p1.x() * SCALE_FACTOR << " " << map_line.p1.y() * SCALE_FACTOR << " " << std::endl;
+        if(print) std::cout << "corresponding global_map_ entry: " << global_map_[index].p0.x() << " " << global_map_[index].p0.y() << 
+          " " << global_map_[index].p1.x() << " " << global_map_[index].p1.y() << " " << std::endl;
     }
+
+    if(print) std::cout << "\n\n\n";
 
     // construct the voronoi diagram
     vb_.construct(&vd_);
@@ -143,36 +180,58 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
     // make our new edge map representation
     std::map<pair<float, float>, list<pair<float, float>>> edge_map;
 
+    if(print) std::cout << "START ADDING TO OUR INTERNAL EDGE REPRESENTATION" << std::endl;
+
     // add mappings for each edge to our internal edge representation
     for (voronoi_diagram<double>::const_vertex_iterator it = vd_.vertices().begin(); 
             it != vd_.vertices().end(); ++it) {
        
         const voronoi_diagram<double>::vertex_type &vertex = *it;
+        if(!is_valid_point(&vertex)) continue;
+
         pair<float, float> this_vertex(vertex.x() / SCALE_FACTOR, vertex.y() / SCALE_FACTOR);
+
+        if(print) std::cout << std::endl << "mapping from pt: " << vertex.x() << " " << vertex.y() << std::endl; 
 
         // iterate over each of this vertex's edges
         const voronoi_diagram<double>::edge_type *edge = vertex.incident_edge();
         do {
-            if (edge->is_finite()) {
+            if (edge->is_finite() && is_valid_point(edge->vertex1())) {
                 pair<float, float> destination_vertex(edge->vertex1()->x() / SCALE_FACTOR, 
                                                       edge->vertex1()->y() / SCALE_FACTOR);
+                if(print) std::cout << "    ...to point... " << edge->vertex1()->x() << " " << edge->vertex1()->y() << std::endl; 
+                if(print)  std::cout << "        ...which when scaled becomes... " << edge->vertex1()->x() / SCALE_FACTOR << " " << edge->vertex1()->y() / SCALE_FACTOR << std::endl; 
 
                 // TODO: for pruning, check if the edge is feasible to traverse.
                     // currently we check for clearance. if needed, we can also
                     // check for kinematic feasibility.
                 // if feasible, add the destination vertex to our list
                 
+                // if((abs(vertex.x() / SCALE_FACTOR - edge->vertex1()->x() / SCALE_FACTOR) > 10 || abs(vertex.y() / SCALE_FACTOR - edge->vertex1()->y() / SCALE_FACTOR) > 10)) {
+                //     if(print3) std::cout << std::endl << "LARGE GAP BETWEEN LINE ENDPOINTS DETECTED" << std::endl;
+                //     if(print3) std::cout << "mapping from pt: " << vertex.x() / SCALE_FACTOR << " " << vertex.y() / SCALE_FACTOR << std::endl; 
+                //     if(print3) std::cout << "mapping to pt: " << edge->vertex1()->x() / SCALE_FACTOR << " " << edge->vertex1()->y() / SCALE_FACTOR << std::endl; 
+                // } else {
                 // cells are built around a source (obstacle). source_index is 
                 // the order the obstacles were added to the map
+                line2f src_to_dest(this_vertex.first, this_vertex.second, 
+                                destination_vertex.first, destination_vertex.second);
                 line2f l1 = global_map_[edge->cell()->source_index()];
                 line2f l2 = global_map_[edge->twin()->cell()->source_index()];
-                if (get_gap_size(l1, l2) > 0.5) {
+                if (kinematic_feasiblity_check(map, src_to_dest) && get_gap_size(l1, l2) > 0.5) {
+                    if(print) std::cout << "        point confirmed feasible! adding to map." << std::endl;
                     edge_map[this_vertex].push_back(destination_vertex);
                 }
+                // }
+            } else {
+                if(!edge->is_finite()) { if(print) std::cout << "    ... skipping non-finite edge..." << std::endl; }
+                else { if(print) std::cout << "    ... skipping nan/inf vertex..." << std::endl; }
             }
             edge = edge->rot_next();
         } while(edge != vertex.incident_edge());
     }
+
+    if(print) std::cout << "STOP ADDING TO OUR INTERNAL EDGE REPRESENTATION (besides goal/start)" << std::endl;  
 
     // find the cell the goal point "obstacle" generated. 
     bool found_start = false;
@@ -223,6 +282,18 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
 
     // replace our old map representation (if it exists) with the new map representation
     voronoi_edge_map_ = edge_map;
+
+    if(print2) std::cout << "START PRINTING OUR EDGE REPRESENTATION" << std::endl;
+
+    for(auto it = edge_map.cbegin(); it != edge_map.cend(); ++it) {
+        for(auto it2 = it->second.cbegin(); it2 != it->second.cend(); it2++) {
+            if(print2) std::cout << it->first.first << " " << it->first.second << " -> " << it2->first << " " << it2->second << "\n";
+        }
+    }
+
+    if(print2) std::cout << "STOP PRINTING OUR EDGE REPRESENTATION" << std::endl;  
+
+    // while(true) assert(0);
 }
 
 
@@ -249,6 +320,10 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
 
 // function to run a*
 void GlobalPlanner::plan_global_path() {
+
+    return;
+
+    if(print) std::cout << "path plan started" << std::endl;
     pair<float, float> start = pair<float, float>(start_.x(), start_.y());
     pair<float, float> goal(goal_.x(), goal_.y());
 
@@ -290,6 +365,8 @@ void GlobalPlanner::plan_global_path() {
         backtrack = parent[backtrack];
     } while(backtrack != start);
     global_path_.push_front(start);
+
+    if(print) std::cout << "path plan finished" << std::endl;
 
     return;
 }
@@ -336,15 +413,17 @@ void GlobalPlanner::visualize_global_plan(amrl_msgs::VisualizationMsg & viz_msg,
 // visualize our voronoi diagram on the map
 void GlobalPlanner::visualize_voronoi(amrl_msgs::VisualizationMsg & viz_msg, uint32_t color) {
     // draw the line segments on the viz_msg
-    // for (const auto& edge : vd_.edges()) {
-    //     if (edge.is_finite() && edge.is_linear()) {
-    //         Eigen::Vector2f p0(edge.vertex0()->x(), edge.vertex0()->y());
-    //         Eigen::Vector2f p1(edge.vertex1()->x(), edge.vertex1()->y());
-    //         // visualization::DrawLine(p0 / SCALE_FACTOR, p1 / SCALE_FACTOR, color, viz_msg);
-    //         visualization::DrawCross(p0 / SCALE_FACTOR, .1, color, viz_msg);
-    //         visualization::DrawCross(p1 / SCALE_FACTOR, .1, color, viz_msg);
-    //     }
-    // }
+    for (const auto& edge : vd_.edges()) {
+        if (edge.is_finite() && edge.is_linear()) {
+            Eigen::Vector2f p0(edge.vertex0()->x(), edge.vertex0()->y());
+            Eigen::Vector2f p1(edge.vertex1()->x(), edge.vertex1()->y());
+            // visualization::DrawLine(p0 / SCALE_FACTOR, p1 / SCALE_FACTOR, color, viz_msg);
+            visualization::DrawCross(p0 / SCALE_FACTOR, .1, color, viz_msg);
+            visualization::DrawCross(p1 / SCALE_FACTOR, .1, color, viz_msg);
+        }
+    }
+
+    uint32_t col = 0x0000FF;
 
     // Initialize all nodes as not visited
     for (const auto& node : voronoi_edge_map_) {
@@ -352,7 +431,9 @@ void GlobalPlanner::visualize_voronoi(amrl_msgs::VisualizationMsg & viz_msg, uin
         Eigen::Vector2f p(node.first.first, node.first.second);
         for (const auto& adjacent : node.second) {
             Eigen::Vector2f adj(adjacent.first, adjacent.second);
-            visualization::DrawLine(p, adj, 0x0000ff, viz_msg);
+            visualization::DrawLine(p, adj, col, viz_msg);
+            // col += 0x001000;
+            // col &= 0x00FFFF;
         }
     }
 }

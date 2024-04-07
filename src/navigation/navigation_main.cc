@@ -71,7 +71,7 @@ DEFINE_string(loc_topic, "localization", "Name of ROS topic for localization");
 DEFINE_string(init_topic,
               "initialpose",
               "Name of ROS topic for initialization");
-DEFINE_string(map, "GDC1", "Name of vector map file");
+DEFINE_string(map, "UT_Campus", "Name of vector map file");
 DEFINE_string(robot_config, "config/navigation.lua", "Robot config file");
 
 
