@@ -137,6 +137,8 @@ void setPathOption(navigation::PathOption& path_option,
             float inner = abs((c - p).norm() - r_inner);
             float outer = abs((c - p).norm() - r_tr);
             float clearance_p = std::min(inner, outer);
+            if (clearance_p > clearance_cap) 
+                clearance_p = clearance_cap; // set clearance to c_max because we don't care at some point
             if (clearance_p < path_option.clearance) {
                 path_option.clearance = clearance_p;
                 //path_option.closest_point = p;
@@ -265,11 +267,11 @@ vector<navigation::PathOption> samplePathOptions(int num_options,
 
 float score(float free_path_length, float goal_dist, float clearance) {
     const float w1 = 1;
-    const float w2 = -.01;
-    const float w3 = 15;
+    const float w2 = -1;
+    const float w3 = 1.5;
     // TODO: currently we are weighting this 0 but will have to tune this later
     // float score = w1*free_path_length + w2 * goal_dist + w3 * clearance;
-    // std::cout << "fpl weight " << w1*free_path_length/score << "goal dist weight " << (w2 * goal_dist) / score << "clearance weight " << (w3 * clearance) / score << " final score "<< score <<endl;
+    // std::cout << "fpl weight " << w1*free_path_length << "goal dist weight " << (w2 * goal_dist) << "clearance weight " << (w3 * clearance) << " final score "<< score <<endl;
     return w1*free_path_length + w2 * goal_dist + w3 * clearance;
 }
 

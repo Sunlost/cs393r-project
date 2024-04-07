@@ -97,11 +97,11 @@ void Navigation::SetNavGoal(const Vector2f& loc, float angle) {
   global_planner_.set_goal(nav_goal_loc_.x(), nav_goal_loc_.y());
 
   // in case of repeated SetNavGoal calls
-  if (goal_established_) {
+  // if (goal_established_) {
     global_planner_.set_start(robot_loc_.x(), robot_loc_.y());
     global_planner_.construct_map(map_, global_viz_msg_);
     global_planner_.plan_global_path();
-  }
+  // }
   
   goal_established_ = true;
 
@@ -204,7 +204,7 @@ void Navigation::Run() {
   // else, run 1dtoc on our carrot
 
 
-  Eigen::Vector2f carrot_loc = robot_loc_;
+  Eigen::Vector2f carrot_loc = nav_goal_loc_;
 
   // can get around crashing by replanning at every time step but that's lame
   // global_planner_.set_start(robot_loc_.x(), robot_loc_.y());
@@ -221,9 +221,9 @@ void Navigation::Run() {
     cout << "carrot loc" << carrot_found << " " << carrot_loc.x() << " " << carrot_loc.y() << endl;
 
     // assertions don't do anything lmao. need to pick a better way for everything to crash and burn
-    // if(!carrot_found) {
-    //   raise(SIGSEGV);
-    // }
+    if(!carrot_found) {
+      raise(SIGSEGV);
+    }
   }
   visualization::DrawCross(carrot_loc, 3.5, 0x800080, global_viz_msg_);
   vector<PathOption> path_options = samplePathOptions(31, point_cloud_, robot_config_, carrot_loc - robot_loc_);
@@ -239,11 +239,11 @@ void Navigation::Run() {
   visualization::DrawRectangle(Vector2f(robot_config_.length/2 - robot_config_.base_link_offset, 0),
       robot_config_.length, robot_config_.width, 0, 0x00FF00, local_viz_msg_);
   // Draw all path options in blue
-  // for (unsigned int i = 0; i < path_options.size(); i++) {
-  //     visualization::DrawPathOption(path_options[i].curvature, path_options[i].free_path_length, 0, 0x0000FF, false, local_viz_msg_);
-  // }
+  for (unsigned int i = 0; i < path_options.size(); i++) {
+      visualization::DrawPathOption(path_options[i].curvature, path_options[i].free_path_length, 0, 0x0000FF, false, local_viz_msg_);
+  }
   // Draw the best path in red
-  // visualization::DrawPathOption(path_options[best_path].curvature, path_options[best_path].free_path_length, path_options[best_path].clearance, 0xFF0000, true, local_viz_msg_);
+  visualization::DrawPathOption(path_options[best_path].curvature, path_options[best_path].free_path_length, path_options[best_path].clearance, 0xFF0000, true, local_viz_msg_);
 // Find the closest point in the point cloud
 
   // Plot the closest point in purple
@@ -253,7 +253,8 @@ void Navigation::Run() {
   // for debugging
   // global_planner_.visualize_voronoi(global_viz_msg_);
   global_planner_.visualize_global_plan(global_viz_msg_);
-  
+  // if we're adding the robot's current location as a point to the voronoi diagram, it should always be in a cell
+  // if the robot's location is a vertex on the diagram it will never be in the starting cell bc it's not in a cell. 
     
 
   // Add timestamps to all messages.

@@ -38,7 +38,7 @@ namespace navigation {
 
 struct PathOption {
   float curvature = 0;
-  float clearance = 10;
+  float clearance = 1;
   float free_path_length = 100;
   Eigen::Vector2f obstruction = Eigen::Vector2f::Zero();
   Eigen::Vector2f closest_point = Eigen::Vector2f::Zero();
