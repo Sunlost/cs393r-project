@@ -389,11 +389,22 @@ bool GlobalPlanner::get_carrot(Eigen::Vector2f& curr_loc, float curr_angle, Eige
         return true;
     }
     else {
+
         carrot_loc->x() = global_path_.front().first;
         carrot_loc->y() = global_path_.front().second;
+
+        //  // Iterate backwards using reverse iterators
+        // for (auto rit = global_path_.rbegin(); rit != global_path_.rend(); ++rit) {
+        //     carrot_loc->x() = rit->first;
+        //     carrot_loc->y() = rit->second;
+        //     if ((curr_loc - *carrot_loc).norm() < 5) { // can change min dist here
+        //         break;
+        //     }
+        // }
     }
+
     // print the carrot
-    std::cout << "Carrot: " << carrot_loc->x() << " " << carrot_loc->y() << std::endl;
+    // std::cout << "Carrot: " << carrot_loc->x() << " " << carrot_loc->y() << std::endl;
     return true;
 }
 

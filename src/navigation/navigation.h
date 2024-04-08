@@ -45,6 +45,7 @@ struct PathOption {
   float curvature = 0;
   float clearance = 10;
   float free_path_length = 100;
+  float dist_to_closest_point = 100;
   Eigen::Vector2f obstruction = Eigen::Vector2f::Zero();
   Eigen::Vector2f closest_point = Eigen::Vector2f::Zero();
 
@@ -55,7 +56,7 @@ struct NavigationParams {
   // frequency
   float dt = .05f;
   // max velocity
-  float max_vel = 1.0f;
+  float max_vel = 5.0f;
   // max acceleration
   float max_accel = 4.0f;
   float max_decel = 4.0f;

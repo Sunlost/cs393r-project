@@ -337,7 +337,7 @@ void Navigation::Run() {
   Eigen::Vector2f carrot_loc = nav_goal_loc_;
   bool carrot_found = global_planner_.get_carrot(robot_loc_, robot_angle_, &carrot_loc, global_viz_msg_);
   // plan must have been invalid. replan and get a new carrot
-  if(!carrot_found) {
+  // if(!carrot_found) {
     global_planner_.set_start(robot_loc_.x(), robot_loc_.y());
     global_planner_.construct_map(map_);
     global_planner_.plan_global_path();
@@ -349,7 +349,7 @@ void Navigation::Run() {
       goal_established_ = false;
       return;
     }
-  }
+  // }
   visualization::DrawCross(carrot_loc, 1, 0xFF0000, global_viz_msg_);
 
   // cout << "0 "<<carrot_loc.x() << " " << carrot_loc.y() << endl;
@@ -369,6 +369,8 @@ void Navigation::Run() {
   vector<PathOption> path_options = samplePathOptions(31, point_cloud_, robot_config_, carrot_loc);
   int best_path = selectPath(path_options, carrot_loc);
 
+  // cout << "best path "<< best_path << endl;
+
   // todo: set twist, set twist.linear.x to speed twist.angular.z is curvature * speed 
   // drive_msg_.curvature = path_options[best_path].curvature;
   // drive_msg_.velocity = run1DTimeOptimalControl(path_options[best_path].free_path_length, current_speed, robot_config_);
@@ -381,11 +383,11 @@ void Navigation::Run() {
   // Draw all path options in blue
   for (unsigned int i = 0; i < path_options.size(); i++) {
       visualization::DrawPathOption(path_options[i].curvature, path_options[i].free_path_length, 0, 0x0000FF, false, local_viz_msg_);
-      visualization::DrawCross(path_options[i].closest_point, .2, 0xff0000, local_viz_msg_);
+      visualization::DrawCross(path_options[i].closest_point, .2, 0x0000FF, local_viz_msg_);
   }
-    // visualization::DrawCross(goal_loc_rot, .2, 0x00ff00, local_viz_msg_);
   // Draw the best path in red
   visualization::DrawPathOption(path_options[best_path].curvature, path_options[best_path].free_path_length, path_options[best_path].clearance, 0xFF0000, true, local_viz_msg_);
+    visualization::DrawCross(path_options[best_path].closest_point, 1, 0x00ff00, local_viz_msg_);
 // Find the closest point in the point cloud
 
   // visualize goal location
