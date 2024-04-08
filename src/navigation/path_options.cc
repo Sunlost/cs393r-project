@@ -135,15 +135,19 @@ void setPathOption(navigation::PathOption& path_option,
     Vector2f closest_point = c + v;
     path_option.closest_point = closest_point;
 
+    float theta = 2 * asin((closest_point).norm() / (2 * c.norm()));
+    // if closest point x is neg, then theta is 2pi - theta
+    if (closest_point.x() < 0) {
+        theta = 2 * M_PI - theta;
+    }
 
     float theta_end = path_option.free_path_length / c.norm();
-    theta_end -= M_PI/2;
-    if (curvature < 0) {
-        theta_end = -theta_end;
-    }
-    Vector2f end_point = c + Vector2f(cos(theta_end), sin(theta_end)) * c.norm();
-
-    if ((end_point).norm() < (closest_point).norm()) {
+    if (theta_end < theta) {
+        theta_end -= M_PI/2;
+        if (curvature < 0) {
+            theta_end = -theta_end;
+        }
+        Vector2f end_point = c + Vector2f(cos(theta_end), sin(theta_end)) * c.norm();
         path_option.closest_point = end_point;
     }
 }
@@ -158,7 +162,6 @@ vector<navigation::PathOption> samplePathOptions(int num_options,
                                                     const navigation::NavigationParams& robot_config,
                                                     Eigen::Vector2f& carrot_loc) {
 
-    std::cout << "Carrot Location: " << carrot_loc << std::endl;
     static vector<navigation::PathOption> path_options;
     path_options.clear();
     float max_curvature = robot_config.max_curvature;
