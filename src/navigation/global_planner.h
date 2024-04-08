@@ -35,7 +35,7 @@ public:
     // to int32 for insertion into voronoi_builder vb_.
     // 100x means we keep to 3 decimal places, probably reasonable.
     // potential issue: if (int32) (coords * 100) overflows? very possible, but unlikely.
-    const double SCALE_FACTOR = 100;
+    const double SCALE_FACTOR = 1e4;
 
 // GLOBAL VARIABLES
     // goal coords scaled by SCALE_FACTOR
