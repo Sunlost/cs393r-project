@@ -61,6 +61,16 @@ void setPathOption(navigation::PathOption& path_option,
                 }
             }
         }
+
+        // closest point
+        // find the closest point between the path and the carrot_loc
+        if (carrot_loc.x() < path_option.free_path_length) {
+            path_option.closest_point = Vector2f(carrot_loc.y(), 0);
+        }
+        else {
+            Vector2f dist = carrot_loc - Vector2f(path_option.free_path_length, 0);
+            path_option.closest_point = Vector2f(path_option.free_path_length, dist.norm());
+        }
         return;
     }
 
@@ -107,20 +117,6 @@ void setPathOption(navigation::PathOption& path_option,
             path_option.obstruction = p;
         }
     }
-	// if (inner_side)
-	//  	cout << "intersecting particle found with inner side" << endl;
-	// if (outer_side)
-	//	cout << "intersecting particle found with outer side" << endl;
-	//if (front_side)
-	//	cout << "intersecting particle found with front side" << endl;
-
-    // float theta = M_PI / 2;
-    // if (path_option.obstruction != Eigen::Vector2f::Zero()) {
-    //     theta = curvature < 0 ? atan2(path_option.obstruction[0], path_option.obstruction[1]- c[1]) :
-    //         atan2(path_option.obstruction[0], c[1] - path_option.obstruction[1]);
-    // }
-    // clearance
-    // path_option.clearance = 100; // some large number
     for (auto p: point_cloud) {
         float theta_p =  curvature < 0 ? atan2(p[0], p[1]- c[1]) :
             atan2(p[0], c[1] - p[1]);
@@ -134,6 +130,23 @@ void setPathOption(navigation::PathOption& path_option,
                 path_option.closest_point = p;
             }
         }
+    }
+
+    // closest point
+    Eigen::Vector2f v = carrot_loc - c;
+    v = v/v.norm();
+    float theta = curvature < 0 ? atan2(v[0], v[1]) : atan2(v[0], -v[1]);
+    theta += M_PI/2;
+    // check theta is within path_option theta
+    float path_option_theta = path_option.free_path_length / c.norm();
+    if (theta < path_option_theta) {
+        Vector2f closest_point = c + c[1] * Vector2f(cos(theta), sin(theta));
+        path_option.closest_point = closest_point;
+    }
+    else {
+        // get the endpoint of the path option
+        Vector2f endpoint = c + c[1] * Vector2f(cos(path_option_theta), sin(path_option_theta));
+        path_option.closest_point = endpoint;
     }
 }
 
