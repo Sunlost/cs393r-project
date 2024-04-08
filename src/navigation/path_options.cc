@@ -59,58 +59,92 @@ void setPathOption(navigation::PathOption& path_option,
         // clearance
         for (auto p: point_cloud) {
             if (p[0] >=0 and p[0] < path_option.free_path_length) {
-                // fmin -> cap clearance at clearance_cap (0.025)
-                float clearance_p = fmin(abs(p[1]) - robot_config.width / 2 - robot_config.safety_margin, clearance_cap);
+                float clearance_p = abs(p[1]) - robot_config.width / 2 - robot_config.safety_margin;
                 if (clearance_p < path_option.clearance) {
                     path_option.clearance = clearance_p;
-                    path_option.obstruction = p;
+                    //path_option.closest_point = p;
                 }
             }
         }
         return;
     }
 
-    Vector2f c = Vector2f(0, 1 / curvature);
+    float r = 1 / curvature;
+    Vector2f c = Vector2f(0, r);
     float r_inner = c.norm() - robot_config.width / 2 - robot_config.safety_margin;
     float r_outer = c.norm() + robot_config.width / 2 + robot_config.safety_margin;
     float r_tl = (Vector2f(0, r_inner) - Vector2f(h + robot_config.safety_margin, 0)).norm();
     float r_tr = (Vector2f(0, r_outer) - Vector2f(h + robot_config.safety_margin, 0)).norm();
     float r_br = (Vector2f(0, r_outer) - Vector2f(robot_config.base_link_offset + robot_config.safety_margin, 0)).norm();
-    path_option.free_path_length = std::min(M_PI * c.norm(), 5.0);  // some large number
+
     // float omega = atan2(h, r_inner);
 
     float theta_br = asin(robot_config.base_link_offset + robot_config.safety_margin / r_br); // angle where back right would hit
     float phi = 0;
-//	cout << "curvature " << curvature << endl;
-//	bool front_side = false, outer_side = false, inner_side = false;
+    //	cout << "curvature " << curvature << endl;
+    //	bool front_side = false, outer_side = false, inner_side = false;
+
+    // angle between c and robot_rel_carrot
+    float optimal_theta = curvature < 0 ? atan2(robot_rel_carrot[0], robot_rel_carrot[1]- c[1]) : atan2(robot_rel_carrot[0], c[1] - robot_rel_carrot[1]);
+    float optimal_fpl = optimal_theta * c.norm();
+    // Used for finding the optimal_endpt
+    Eigen::Affine2f rot_1 = Eigen::Translation2f(0, r) * Eigen::Rotation2Df(optimal_theta);
+    Vector2f r_rot = Vector2f(0, -r);
+    Vector2f optimal_endpt = rot_1 * r_rot; //start off with optimal endpt, select between the short fpl when checking with the p.
+
+    path_option.free_path_length = optimal_fpl; // will always be <= feasible free path length.
+    path_option.closest_point = optimal_endpt; // has to >= in distance to the feasible end point.
+
     for (unsigned int i = 0; i < point_cloud.size(); i++) {
         Vector2f p = point_cloud[i];
         float r_p = (c-p).norm();
+
+
         float theta = curvature < 0 ? atan2(p[0], p[1]- c[1]) : atan2(p[0], c[1] - p[1]); // angle between p and c
+        Vector2f obst_endpt = optimal_endpt;
+
         float length = 5.0;
         // cout << "curvature " << curvature << endl;
         if (r_inner <= r_p && r_p <= r_tl) {    // inner side hit
-                phi = acos(r_inner / r_p);
-                length = (theta - phi) * c.norm();
+            phi = acos(r_inner / r_p);
+            length = (theta - phi) * c.norm();
+
+            // now for the closest point, which depends on phi.
+            Eigen::Affine2f rot_2 = Eigen::Translation2f(0, r) * Eigen::Rotation2Df(phi);
+            obst_endpt = rot_2 * r_rot;
+
             // inner_side = true;
-                // cout << "inner side hit" << endl;
+            // cout << "inner side hit" << endl;
         }
         if ((r_inner <= r_p && r_p <= r_br) && (-theta_br <= theta && theta <= theta_br)) {    // outer side hit
             phi = acos(r_p / (c.norm() + robot_config.width / 2));
             length = (theta - phi) * c.norm();
-	    // outer_side = true;
-	    // cout << "outer side hit" << endl;
+
+            // now for the closest point, which depends on phi.
+            Eigen::Affine2f rot_2 = Eigen::Translation2f(0, r) * Eigen::Rotation2Df(phi);
+            obst_endpt = rot_2 * r_rot;
+
+            // outer_side = true;
+            // cout << "outer side hit" << endl;
         }
 
         if (r_tl <= r_p && r_p <= r_tr) {    // front side hit
             phi = asin(h / r_p);
             length = (theta - phi) * c.norm();
-	    // front_side = true;
-	    // cout << "front side hit" << endl;
+
+            // now for the closest point, which depends on phi.
+            Eigen::Affine2f rot_2 = Eigen::Translation2f(0, r) * Eigen::Rotation2Df(phi);
+            obst_endpt = rot_2 * r_rot;
+
+            // front_side = true;
+            // cout << "front side hit" << endl;
         }
+
+        // At this point the feasible fpl has been calculated like we want it.
         if (length < path_option.free_path_length && length > 0) {
             path_option.free_path_length = length;
             path_option.obstruction = p;
+            path_option.closest_point = obst_endpt;
         }
     }
 	// if (inner_side)
@@ -138,95 +172,6 @@ void setPathOption(navigation::PathOption& path_option,
             if (clearance_p < path_option.clearance) {
                 path_option.clearance = clearance_p;
                 path_option.obstruction = p;
-            }
-        }
-    }
-
-    // NEW: Adding code to calculate the closest point properly, may need to look at this whole method
-    // again to optimize + simplify 
-    // deal with the map-relative carrot point
-    // zero out with the carrot point to get it robot-relative
-    // need to find the deltas, for now we won't use any angles tho.
-    // the x and y deltas are the robot-relative carrot.
-    // float angle_delta = carrot_angle - carrot_angle;
-
-    Vector2f temp_endpt(INFINITY, INFINITY);
-    double temp_fpl = INFINITY;
-
-    //go thru the point cloud to set the closest_point ONLY
-    bool mirrored = false;
-    float w = robot_config.width/2 + robot_config.safety_margin;
-    for (auto p: point_cloud) {
-        double radius = 1.0 / curvature;
-        if (radius < 0.0) {
-            mirrored = true;
-            radius = -1 * radius; 
-        } 
-
-        Eigen::Vector2f center(0, radius); // right = negative value
-        double goal_mag = (robot_rel_carrot - center).norm();
-
-        // fpl = f(c, p) if c > 0
-        // fpl = f(-c, Mirrored(p)) if c < 0, we flip our curve back into the +ve, and flip points in cloud y
-
-        // Straight path init vals
-        Eigen::Vector2f optimal_endpt(robot_rel_carrot.x(), 0);
-        // could change cmp_opt_fpl to path_option.free_path_length, but for now we only want to change closest point
-        double cmp_opt_fpl = robot_rel_carrot.x();
-
-        // if curved, the endpoint is not just straight ahead of the robot.
-        if (curvature != 0) {
-            // path is curved.
-            optimal_endpt.x() = center.x() + (robot_rel_carrot.x() - center.x()) / goal_mag * radius;
-            optimal_endpt.y() = center.y() + (robot_rel_carrot.y() - center.y()) / goal_mag * radius;
-            cmp_opt_fpl = (2 * radius) * asin(optimal_endpt.norm() / (2 * radius)); // init to some high value
-        } 
-
-        // flip the point cloud across the x axis
-        Eigen::Vector2f point(p.x(), p.y());
-        if (mirrored) point.y() = -1 * p.y();
-
-        // now the math should work as we know it should, for curves
-        if (curvature != 0) {
-            double r_1 = radius - w;
-            Eigen::Vector2f r_2_v(radius + w, h);
-            double r_2 = r_2_v.norm();
-            double omega = atan2(h, radius - w);
-            Eigen::Vector2f mag_v(p.x() - center.x(), p.y() - center.y());
-            double mag = mag_v.norm();
-            double theta = atan2(p.x(), radius - p.y());
-            double phi = (theta - omega);
-
-            // rotate r from (0,r) by phi radians to find the endpoint
-            Eigen::Affine2f rotate_phi = Eigen::Translation2f(0, radius) * Eigen::Rotation2Df(phi);
-            Eigen::Vector2f circle_center(0, -radius);
-            Eigen::Vector2f obstructed_endpt = rotate_phi * circle_center; // this wrong, need to use affines.
-            double obstructed_fpl = radius * phi; // need to find where this point is in the graph
-
-            // this point is an obstruction for this path
-            if ((mag >= r_1 && mag <= r_2) && theta > 0) {
-                Eigen::Affine2f translate_center = Eigen::Translation2f(0, -radius) * Eigen::Rotation2Df(0);
-                Eigen::Vector2f center_optimal_endpt = translate_center * optimal_endpt;
-                double optimal_central_angle = abs(atan(center_optimal_endpt.x() / center_optimal_endpt.y()));
-                double optimal_fpl = optimal_central_angle * radius;
-
-                if (obstructed_fpl < path_option.free_path_length) {
-                    temp_fpl = obstructed_fpl;
-                    temp_endpt = obstructed_endpt;
-                } else {
-                    temp_fpl = optimal_fpl;
-                    temp_endpt = optimal_endpt;
-                }
-
-                // if (mirrored) visualization::DrawCross(Eigen::Vector2f (temp_endpt.x(), -1 * temp_endpt.y()), .1, 0xFF0000, local_viz_msg_);
-                // else visualization::DrawCross(Eigen::Vector2f (temp_endpt.x(), temp_endpt.y()), .1, 0xFF0000, local_viz_msg_);
-
-                if (temp_fpl < cmp_opt_fpl) {
-                    // could switch to path_option's fpl
-                    cmp_opt_fpl = min(cmp_opt_fpl, temp_fpl); // need to do same 3 way min for end of path
-                    temp_endpt.y() = (mirrored) ? -1 * temp_endpt.y() : temp_endpt.y();
-                    path_option.closest_point = temp_endpt;
-                }
             }
         }
     }
