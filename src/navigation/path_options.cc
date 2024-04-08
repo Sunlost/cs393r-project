@@ -64,12 +64,9 @@ void setPathOption(navigation::PathOption& path_option,
 
         // closest point
         // find the closest point between the path and the carrot_loc
+        path_option.closest_point = Vector2f(std::min(carrot_loc.x(), path_option.free_path_length), 0);
         if (carrot_loc.x() < path_option.free_path_length) {
-            path_option.closest_point = Vector2f(carrot_loc.y(), 0);
-        }
-        else {
-            Vector2f dist = carrot_loc - Vector2f(path_option.free_path_length, 0);
-            path_option.closest_point = Vector2f(path_option.free_path_length, dist.norm());
+            path_option.closest_point = Vector2f(carrot_loc.x(), 0);
         }
         return;
     }
@@ -114,7 +111,7 @@ void setPathOption(navigation::PathOption& path_option,
         }
         if (length < path_option.free_path_length && length > 0) {
             path_option.free_path_length = length;
-            path_option.obstruction = p;
+            // path_option.obstruction = p;
         }
     }
     for (auto p: point_cloud) {
@@ -127,26 +124,27 @@ void setPathOption(navigation::PathOption& path_option,
             float clearance_p = std::min(inner, outer);
             if (clearance_p < path_option.clearance) {
                 path_option.clearance = clearance_p;
-                path_option.closest_point = p;
+                // path_option.closest_point = p;
             }
         }
     }
 
     // closest point
     Eigen::Vector2f v = carrot_loc - c;
-    v = v/v.norm();
-    float theta = curvature < 0 ? atan2(v[0], v[1]) : atan2(v[0], -v[1]);
-    theta += M_PI/2;
-    // check theta is within path_option theta
-    float path_option_theta = path_option.free_path_length / c.norm();
-    if (theta < path_option_theta) {
-        Vector2f closest_point = c + c[1] * Vector2f(cos(theta), sin(theta));
-        path_option.closest_point = closest_point;
+    v = v/v.norm() * c.norm();
+    Vector2f closest_point = c + v;
+    path_option.closest_point = closest_point;
+
+
+    float theta_end = path_option.free_path_length / c.norm();
+    theta_end -= M_PI/2;
+    if (curvature < 0) {
+        theta_end = -theta_end;
     }
-    else {
-        // get the endpoint of the path option
-        Vector2f endpoint = c + c[1] * Vector2f(cos(path_option_theta), sin(path_option_theta));
-        path_option.closest_point = endpoint;
+    Vector2f end_point = c + Vector2f(cos(theta_end), sin(theta_end)) * c.norm();
+
+    if ((end_point).norm() < (closest_point).norm()) {
+        path_option.closest_point = end_point;
     }
 }
 
@@ -158,7 +156,9 @@ void setPathOption(navigation::PathOption& path_option,
 vector<navigation::PathOption> samplePathOptions(int num_options,
                                                     const vector<Eigen::Vector2f>& point_cloud,
                                                     const navigation::NavigationParams& robot_config,
-                                                    Eigen::Vector2f carrot_loc) {
+                                                    Eigen::Vector2f& carrot_loc) {
+
+    std::cout << "Carrot Location: " << carrot_loc << std::endl;
     static vector<navigation::PathOption> path_options;
     path_options.clear();
     float max_curvature = robot_config.max_curvature;
@@ -190,7 +190,7 @@ float score(float free_path_length, float goal_dist, float clearance) {
 // returns the index of the selected path
 // for now, just return the index of the path with the longest free path length
 // if there are multiple paths with the same free path length, return the one with the smallest curvature
-int selectPath(const vector<navigation::PathOption>& path_options, Eigen::Vector2f carrot_loc) {
+int selectPath(const vector<navigation::PathOption>& path_options, Eigen::Vector2f& carrot_loc) {
     int selected_path = 0;
     float best_score = 0;
     for (unsigned int i = 0; i < path_options.size(); i++) {

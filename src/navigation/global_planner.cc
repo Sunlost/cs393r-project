@@ -296,7 +296,7 @@ void GlobalPlanner::plan_global_path() {
         global_path_.push_front(backtrack);
         backtrack = parent[backtrack];
     } while(backtrack != start);
-    global_path_.push_front(start);
+    // global_path_.push_front(start); don't push back the start, so the first element is the carrot
 
     return;
 }
@@ -307,16 +307,29 @@ void GlobalPlanner::plan_global_path() {
 bool GlobalPlanner::get_carrot(Eigen::Vector2f& curr_loc, float curr_angle, Eigen::Vector2f* carrot_loc) {
     // decide what vertex on the path to return next
     // divide by SCALE_FACTOR to get back from "int" to float
+    // print get_carrot called
+    std::cout << "Get Carrot Called" << std::endl;
     if (global_path_.size() == 0) {
         return false;
     }
 
-    if (!inside_cell(start_cell_, curr_loc)) {
+    if (!inside_cell(start_cell_, curr_loc * SCALE_FACTOR)) {
+        // print not inside start cell
+        std::cout << "Not inside start cell" << std::endl;
         return false;
     }
 
-    // return the first point
-    *carrot_loc = Eigen::Vector2f(global_path_.front().first, global_path_.front().second);
+    if (global_path_.size() == 2) { // robot can go directly to goal, so set goal as carrot.
+        carrot_loc->x() = global_path_.back().first;
+        carrot_loc->y() = global_path_.back().second;
+        return true;
+    }
+    else {  // return the first point
+        carrot_loc->x() = global_path_.front().first;
+        carrot_loc->y() = global_path_.front().second;
+    }
+    // print the carrot
+    std::cout << "Carrot: " << carrot_loc->x() << " " << carrot_loc->y() << std::endl;
     return true;
 }
 
@@ -362,4 +375,18 @@ void GlobalPlanner::visualize_voronoi(amrl_msgs::VisualizationMsg & viz_msg, uin
             visualization::DrawLine(p, adj, 0x007777, viz_msg);
         }
     }
+
+    // draw the start_cell in blue
+    const voronoi_diagram<double>::edge_type* edge = start_cell_->incident_edge();
+    do {
+        if (edge->is_primary() && edge->is_finite()) {
+            // draw it
+            Eigen::Vector2f p0(edge->vertex0()->x(), edge->vertex0()->y());
+            p0 /= SCALE_FACTOR;
+            Eigen::Vector2f p1(edge->vertex1()->x(), edge->vertex1()->y());
+            p1 /= SCALE_FACTOR;
+            visualization::DrawLine(p0, p1, 0x0000ff, viz_msg);
+        }
+        edge = edge->next();
+    } while(edge != start_cell_->incident_edge());
 }

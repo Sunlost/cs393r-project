@@ -193,6 +193,8 @@ void Navigation::Run() {
 
   Eigen::Vector2f carrot_loc = Eigen::Vector2f::Zero();
   bool carrot_found = global_planner_.get_carrot(robot_loc_, robot_angle_, &carrot_loc);
+  // print carrot_found
+  cout << "found " << carrot_found << endl;
   if(!carrot_found) {
     global_planner_.set_start(robot_loc_.x(), robot_loc_.y());
     global_planner_.construct_map(map_);
@@ -201,8 +203,23 @@ void Navigation::Run() {
     assert(carrot_found);
   }
 
-  vector<PathOption> path_options = samplePathOptions(31, point_cloud_, robot_config_, nav_goal_loc_);
-  // vector<PathOption> path_options = samplePathOptions(31, point_cloud_, robot_config_, carrot_loc);
+  cout << "0 "<<carrot_loc.x() << " " << carrot_loc.y() << endl;
+  
+  // transform carrot_loc to robot frame
+  carrot_loc = carrot_loc - robot_loc_;
+
+  cout << "1 "<<carrot_loc.x() << " " << carrot_loc.y() << endl;
+  // rotate goal_loc by -robot_angle_
+  Eigen::Matrix2f rot;
+  rot << cos(-robot_angle_), -sin(-robot_angle_), sin(-robot_angle_), cos(-robot_angle_);
+  carrot_loc = rot * carrot_loc;
+
+  // print the carrot
+  cout << "2 "<< carrot_loc.x() << " " << carrot_loc.y() << endl;
+
+
+  // vector<PathOption> path_options = samplePathOptions(31, point_cloud_, robot_config_, goal_loc_rot);
+  vector<PathOption> path_options = samplePathOptions(31, point_cloud_, robot_config_, carrot_loc);
   int best_path = selectPath(path_options, carrot_loc);
 
   drive_msg_.curvature = path_options[best_path].curvature;
@@ -216,8 +233,9 @@ void Navigation::Run() {
   // Draw all path options in blue
   for (unsigned int i = 0; i < path_options.size(); i++) {
       visualization::DrawPathOption(path_options[i].curvature, path_options[i].free_path_length, 0, 0x0000FF, false, local_viz_msg_);
-      visualization::DrawCross(path_options[best_path].closest_point, .2, 0xFF00FF, local_viz_msg_);
+      visualization::DrawCross(path_options[i].closest_point, .2, 0xff0000, local_viz_msg_);
   }
+    // visualization::DrawCross(goal_loc_rot, .2, 0x00ff00, local_viz_msg_);
   // Draw the best path in red
   visualization::DrawPathOption(path_options[best_path].curvature, path_options[best_path].free_path_length, path_options[best_path].clearance, 0xFF0000, true, local_viz_msg_);
 // Find the closest point in the point cloud
@@ -237,7 +255,7 @@ void Navigation::Run() {
   // Publish messages.
   viz_pub_.publish(local_viz_msg_);
   viz_pub_.publish(global_viz_msg_);
-  drive_pub_.publish(drive_msg_);
+  // drive_pub_.publish(drive_msg_);
   // Record control for latency compensation
   Control control = GetCartesianControl(drive_msg_.velocity, drive_msg_.curvature, drive_msg_.header.stamp.toSec());
   latency_compensation_->recordControl(control);
