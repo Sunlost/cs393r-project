@@ -89,6 +89,10 @@ class SimpleQueue {
     return false;
   }
 
+  int Size() {
+    return values_.size();
+  }
+
   private:
   deque<pair<Value, Priority> > values_;
 };

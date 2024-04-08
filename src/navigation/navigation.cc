@@ -36,6 +36,7 @@
 #include "path_options.h"
 #include "latency_compensation.h"
 #include "global_planner.h" 
+#include <signal.h>
 
 using Eigen::Vector2f;
 using amrl_msgs::AckermannCurvatureDriveMsg;
@@ -92,25 +93,14 @@ void Navigation::SetNavGoal(const Vector2f& loc, float angle) {
   // time to voronoi
   nav_goal_loc_ = loc;
   nav_goal_angle_ = angle;
-  // global_planner_.initialize(map_, nav_goal_loc_.x(), nav_goal_loc_.y());
   global_planner_.set_goal(nav_goal_loc_.x(), nav_goal_loc_.y());
-  goal_established_ = true;
-
-
-
-  // either
-    // a. map our line segment constructs to the corresponding boost types
-    // b. reconstruct a map made of the boost line segments instead
-  
-  // tell boost to make the voronoi diagram
-
-  // run a*
-
-  // record local observations onto the map
-
-  // repeat
-
-  
+  // replan if new nav target is established after init 
+  if (goal_established_) {
+    global_planner_.set_start(robot_loc_.x(), robot_loc_.y());
+    global_planner_.construct_map(map_);
+    global_planner_.plan_global_path();
+  }
+  goal_established_ = true; 
 
 }
 
@@ -172,6 +162,12 @@ void Navigation::Run() {
   // If odometry has not been initialized or goal has not been set, we can't do anything.
   if (!odom_initialized_ || !goal_established_) return;
 
+  // robot is within .5m of goal, consider it reached
+  if ((robot_loc_ - nav_goal_loc_).squaredNorm() < 0.25){
+    drive_msg_.velocity = 0;
+    return;
+  }
+
   // The control iteration goes here. 
   // Feel free to make helper functions to structure the control appropriately.
   
@@ -186,39 +182,38 @@ void Navigation::Run() {
   // float dist_to_go = (10 - distance_traveled_); // hard code to make it go 10 forward
   // float cmd_vel = run1DTimeOptimalControl(dist_to_go, current_speed, robot_config_);
 
-  // if robot reached nav_goal_loc_ and nav_goal_angle_, return
-  // if plan invalid, aka get_carrot returns false, replan
-  // else, run 1dtoc on our carrot
 
-
-  Eigen::Vector2f carrot_loc = Eigen::Vector2f::Zero();
-  bool carrot_found = global_planner_.get_carrot(robot_loc_, robot_angle_, &carrot_loc);
-  // print carrot_found
-  cout << "found " << carrot_found << endl;
+  Eigen::Vector2f carrot_loc = nav_goal_loc_;
+  bool carrot_found = global_planner_.get_carrot(robot_loc_, robot_angle_, &carrot_loc, global_viz_msg_);
+  // plan must have been invalid. replan and get a new carrot
   if(!carrot_found) {
     global_planner_.set_start(robot_loc_.x(), robot_loc_.y());
     global_planner_.construct_map(map_);
     global_planner_.plan_global_path();
-    carrot_found = global_planner_.get_carrot(robot_loc_, robot_angle_, &carrot_loc);
-    assert(carrot_found);
+    carrot_found = global_planner_.get_carrot(robot_loc_, robot_angle_, &carrot_loc, global_viz_msg_);
+    // plan must be unreachable. stop moving
+    if(!carrot_found) {
+      drive_msg_.velocity = 0;
+      goal_established_ = false;
+      return;
+    }
   }
+  visualization::DrawCross(carrot_loc, 1, 0xFF0000, global_viz_msg_);
 
-  cout << "0 "<<carrot_loc.x() << " " << carrot_loc.y() << endl;
+  // cout << "0 "<<carrot_loc.x() << " " << carrot_loc.y() << endl;
   
   // transform carrot_loc to robot frame
   carrot_loc = carrot_loc - robot_loc_;
 
-  cout << "1 "<<carrot_loc.x() << " " << carrot_loc.y() << endl;
+  // cout << "1 "<<carrot_loc.x() << " " << carrot_loc.y() << endl;
   // rotate goal_loc by -robot_angle_
   Eigen::Matrix2f rot;
   rot << cos(-robot_angle_), -sin(-robot_angle_), sin(-robot_angle_), cos(-robot_angle_);
   carrot_loc = rot * carrot_loc;
 
   // print the carrot
-  cout << "2 "<< carrot_loc.x() << " " << carrot_loc.y() << endl;
+  // cout << "2 "<< carrot_loc.x() << " " << carrot_loc.y() << endl;
 
-
-  // vector<PathOption> path_options = samplePathOptions(31, point_cloud_, robot_config_, goal_loc_rot);
   vector<PathOption> path_options = samplePathOptions(31, point_cloud_, robot_config_, carrot_loc);
   int best_path = selectPath(path_options, carrot_loc);
 
@@ -240,6 +235,9 @@ void Navigation::Run() {
   visualization::DrawPathOption(path_options[best_path].curvature, path_options[best_path].free_path_length, path_options[best_path].clearance, 0xFF0000, true, local_viz_msg_);
 // Find the closest point in the point cloud
 
+  // visualize goal location
+  // visualization::DrawCross(nav_goal_loc_, 2, 0x2038FB, global_viz_msg_);
+
   // Plot the closest point in purple
   // visualization::DrawLine(path_options[best_path].closest_point, Vector2f(0, 1/path_options[best_path].curvature), 0xFF00FF, local_viz_msg_);
   // for debugging
@@ -255,7 +253,7 @@ void Navigation::Run() {
   // Publish messages.
   viz_pub_.publish(local_viz_msg_);
   viz_pub_.publish(global_viz_msg_);
-  // drive_pub_.publish(drive_msg_);
+  drive_pub_.publish(drive_msg_);
   // Record control for latency compensation
   Control control = GetCartesianControl(drive_msg_.velocity, drive_msg_.curvature, drive_msg_.header.stamp.toSec());
   latency_compensation_->recordControl(control);

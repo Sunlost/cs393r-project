@@ -268,9 +268,15 @@ void GlobalPlanner::plan_global_path() {
     map<pair<float, float>, double> cost;
     cost[start] = 0;
 
+    bool goal_found = false;
+
     while(!frontier.Empty()) {
         pair<float, float> cur = frontier.Pop();
-        if(cur == goal) break;
+        if(cur == goal) {
+            // if the goal is unreachable, bad things happen. so we set a flag for whether goal was reachable
+            goal_found = true;
+            break;
+        };
         
         list<pair<float, float>> adj_list = voronoi_edge_map_[cur];
         
@@ -290,32 +296,79 @@ void GlobalPlanner::plan_global_path() {
     }
 
     // follow parent dict mappings from goal to our starting vertex to build path
-    global_path_.clear();
-    pair<float, float> backtrack = goal;
-    do {
-        global_path_.push_front(backtrack);
-        backtrack = parent[backtrack];
-    } while(backtrack != start);
-    // global_path_.push_front(start); don't push back the start, so the first element is the carrot
-
+    if (goal_found) {
+        global_path_.clear();
+        pair<float, float> backtrack = goal;
+        do {
+            global_path_.push_front(backtrack);
+            backtrack = parent[backtrack];
+        } while(backtrack != start);
+        // global_path_.push_front(start);
+    }
+    
     return;
 }
 
 
 
 // return next carrot point
-bool GlobalPlanner::get_carrot(Eigen::Vector2f& curr_loc, float curr_angle, Eigen::Vector2f* carrot_loc) {
+bool GlobalPlanner::get_carrot(Eigen::Vector2f& curr_loc, float curr_angle, Eigen::Vector2f* carrot_loc, amrl_msgs::VisualizationMsg & viz_msg) {
     // decide what vertex on the path to return next
     // divide by SCALE_FACTOR to get back from "int" to float
     // print get_carrot called
-    std::cout << "Get Carrot Called" << std::endl;
+    // std::cout << "Get Carrot Called" << std::endl;
     if (global_path_.size() == 0) {
         return false;
     }
 
-    if (!inside_cell(start_cell_, curr_loc * SCALE_FACTOR)) {
-        // print not inside start cell
-        std::cout << "Not inside start cell" << std::endl;
+    // return carrot if robot is in circumcircle
+    // find farthest point (btwn starting location and start_cell_) and use that as radius
+    // farthest point will be the vertices of start_cell_
+    // const voronoi_diagram<double>::edge_type* edge = start_cell_->incident_edge();
+    // double farthest_point = 0;
+    // do {
+    //     if (edge->is_primary() && edge->is_finite()) {
+    //         farthest_point = std::max(farthest_point, pow(start_.x() - edge->vertex1()->x() / SCALE_FACTOR, 2) + pow(start_.y() - edge->vertex1()->y() / SCALE_FACTOR, 2));
+    //     }
+    //     edge = edge->next();
+    // } while(edge != start_cell_->incident_edge());
+    
+    // actually, find two farthest vertices from each other
+    // being so for real this was not worth spending time on
+    const voronoi_diagram<double>::edge_type* edge_outer = start_cell_->incident_edge();
+    const voronoi_diagram<double>::edge_type* edge_inner = start_cell_->incident_edge();
+
+    double farthest_dist = 0;
+    pair<Eigen::Vector2f, Eigen::Vector2f> furthest_points;
+    do {
+        const voronoi_diagram<double>::vertex_type* point1 = edge_outer->vertex1();
+        if (edge_outer->is_primary() && edge_outer->is_finite()) {
+            do {
+                if (edge_inner->is_primary() && edge_inner->is_finite()) {
+                    const voronoi_diagram<double>::vertex_type* point2 = edge_inner->vertex1();;
+                    double dist = pow((point1->x() - point2->x()) / SCALE_FACTOR, 2) + pow((point1->y() - point2->y()) / SCALE_FACTOR, 2);
+                    if (dist > farthest_dist) {
+                        farthest_dist = dist;
+                        furthest_points.first = Eigen::Vector2f(point1->x() / SCALE_FACTOR, point1->y() / SCALE_FACTOR);
+                        furthest_points.second = Eigen::Vector2f(point2->x() / SCALE_FACTOR, point2->y() / SCALE_FACTOR);
+                    }
+                }
+                edge_inner = edge_inner->next();
+            } while(edge_inner != start_cell_->incident_edge());
+        }
+        edge_outer = edge_outer->next();
+    } while(edge_outer != start_cell_->incident_edge());
+
+    Eigen::Vector2f circle_center((furthest_points.first.x() + furthest_points.second.x()) / 2, (furthest_points.first.y() + furthest_points.second.y()) / 2);
+    // uncomment for viz
+    // visualization::DrawArc(circle_center, sqrt(farthest_dist) / 2, 0, 360, 0x2398DB, viz_msg);
+    // visualization::DrawCross(furthest_points.first, 1, 0x2398DB, viz_msg);
+    // visualization::DrawCross(furthest_points.second, 1, 0x2398DB, viz_msg);
+
+    // check if robot is in the radius of this circle
+    // circle radius is sqrt(farthest_dist) / 2
+    // I want to keep things squared so multiply by 4
+    if (4*(circle_center - curr_loc).squaredNorm() > farthest_dist) {
         return false;
     }
 
@@ -324,7 +377,7 @@ bool GlobalPlanner::get_carrot(Eigen::Vector2f& curr_loc, float curr_angle, Eige
         carrot_loc->y() = global_path_.back().second;
         return true;
     }
-    else {  // return the first point
+    else {
         carrot_loc->x() = global_path_.front().first;
         carrot_loc->y() = global_path_.front().second;
     }
