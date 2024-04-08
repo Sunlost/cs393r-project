@@ -33,9 +33,14 @@ public:
 // CONSTANT VARIABLES
     // multiplier for all float coordinate points to prevent full decimal loss when converted
     // to int32 for insertion into voronoi_builder vb_.
-    // 100x means we keep to 3 decimal places, probably reasonable.
-    // potential issue: if (int32) (coords * 100) overflows? very possible, but unlikely.
-    const uint64_t SCALE_FACTOR = 100;
+
+    // also necessary to ensure our geometry does not overlap inside of the builder -- this breaks
+    // the builder entirely. sun and macy spent many hours figuring this one out.
+    // see here:
+        // https://github.com/boostorg/polygon/issues/32
+        // https://github.com/boostorg/polygon/issues/72
+    // this scale factor is sufficient for a map of size similar to GDC1
+    const uint64_t SCALE_FACTOR = 1e4;
 
 // GLOBAL VARIABLES
     // goal coords scaled by SCALE_FACTOR

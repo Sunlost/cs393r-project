@@ -90,6 +90,12 @@ bool inside_cell(const voronoi_diagram<double>::cell_type * cell, const Eigen::V
 }
 
 
+
+bool is_valid_point(const voronoi_diagram<double>::vertex_type* point) {
+    return !std::isnan(point->x()) && !std::isnan(point->y()) && !std::isinf(point->x()) && !std::isinf(point->y());
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////
 //                             PUBLIC FUNCTIONS                              //
 ///////////////////////////////////////////////////////////////////////////////
@@ -148,18 +154,19 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
             it != vd_.vertices().end(); ++it) {
        
         const voronoi_diagram<double>::vertex_type &vertex = *it;
+
+        if(!is_valid_point(&vertex)) continue;
+
         pair<float, float> this_vertex(vertex.x() / SCALE_FACTOR, vertex.y() / SCALE_FACTOR);
 
         // iterate over each of this vertex's edges
         const voronoi_diagram<double>::edge_type *edge = vertex.incident_edge();
         do {
-            if (edge->is_finite()) {
+            if (edge->is_finite() && is_valid_point(edge->vertex1())) {
                 pair<float, float> destination_vertex(edge->vertex1()->x() / SCALE_FACTOR, 
                                                       edge->vertex1()->y() / SCALE_FACTOR);
 
-                // TODO: for pruning, check if the edge is feasible to traverse.
-                    // currently we check for clearance. if needed, we can also
-                    // check for kinematic feasibility.
+                // for pruning, check if the edge is feasible to traverse.
                 // if feasible, add the destination vertex to our list
                 
                 // cells are built around a source (obstacle). source_index is 
@@ -352,7 +359,7 @@ void GlobalPlanner::visualize_voronoi(amrl_msgs::VisualizationMsg & viz_msg, uin
         Eigen::Vector2f p(node.first.first, node.first.second);
         for (const auto& adjacent : node.second) {
             Eigen::Vector2f adj(adjacent.first, adjacent.second);
-            visualization::DrawLine(p, adj, 0x0000ff, viz_msg);
+            visualization::DrawLine(p, adj, 0x007777, viz_msg);
         }
     }
 }
