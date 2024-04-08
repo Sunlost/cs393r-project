@@ -80,95 +80,77 @@ void setPathOption(navigation::PathOption& path_option,
     // float omega = atan2(h, r_inner);
 
     float theta_br = asin(robot_config.base_link_offset + robot_config.safety_margin / r_br); // angle where back right would hit
-    float phi = 0;
+    float omega = 0;
     //	cout << "curvature " << curvature << endl;
     //	bool front_side = false, outer_side = false, inner_side = false;
 
-    // angle between c and robot_rel_carrot
+    Vector2f robot_rel_carrot(5, 0);
+
+    // optimal end point calculations, credit to Luisa
+    Vector2f v = robot_rel_carrot - c;
+    v = v/v.norm() * c.norm();
+    Vector2f optimal_endpt = c + v;
+    path_option.closest_point = optimal_endpt; // has to >= in distance to the feasible end point.
+
     float optimal_theta = curvature < 0 ? atan2(robot_rel_carrot[0], robot_rel_carrot[1]- c[1]) : atan2(robot_rel_carrot[0], c[1] - robot_rel_carrot[1]);
     float optimal_fpl = optimal_theta * c.norm();
-    // Used for finding the optimal_endpt
-    Eigen::Affine2f rot_1 = Eigen::Translation2f(0, r) * Eigen::Rotation2Df(optimal_theta);
-    Vector2f r_rot = Vector2f(0, -r);
-    Vector2f optimal_endpt = rot_1 * r_rot; //start off with optimal endpt, select between the short fpl when checking with the p.
+    path_option.free_path_length = optimal_fpl; // will always be >= feasible free path length.
+    
 
-    path_option.free_path_length = optimal_fpl; // will always be <= feasible free path length.
-    path_option.closest_point = optimal_endpt; // has to >= in distance to the feasible end point.
+    Vector2f r_rot = Vector2f(0, -r);
 
     for (unsigned int i = 0; i < point_cloud.size(); i++) {
         Vector2f p = point_cloud[i];
         float r_p = (c-p).norm();
 
+        float theta = curvature < 0 ? atan2(p[0], p[1]- c[1]) : atan2(p[0], c[1] - p[1]); // angle between p and c        
 
-        float theta = curvature < 0 ? atan2(p[0], p[1]- c[1]) : atan2(p[0], c[1] - p[1]); // angle between p and c
         Vector2f obst_endpt = optimal_endpt;
 
         float length = 5.0;
-        // cout << "curvature " << curvature << endl;
         if (r_inner <= r_p && r_p <= r_tl) {    // inner side hit
-            phi = acos(r_inner / r_p);
-            length = (theta - phi) * c.norm();
+            omega = acos(r_inner / r_p);
+            length = (theta - omega) * c.norm();
 
-            // now for the closest point, which depends on phi.
-            Eigen::Affine2f rot_2 = Eigen::Translation2f(0, r) * Eigen::Rotation2Df(phi);
+            // now for the closest point, which depends on omega.
+            Eigen::Affine2f rot_2 = Eigen::Translation2f(0, r) * Eigen::Rotation2Df(omega);
             obst_endpt = rot_2 * r_rot;
-
-            // inner_side = true;
-            // cout << "inner side hit" << endl;
         }
         if ((r_inner <= r_p && r_p <= r_br) && (-theta_br <= theta && theta <= theta_br)) {    // outer side hit
-            phi = acos(r_p / (c.norm() + robot_config.width / 2));
-            length = (theta - phi) * c.norm();
+            omega = acos(r_p / (c.norm() + robot_config.width / 2));
+            length = (theta - omega) * c.norm();
 
-            // now for the closest point, which depends on phi.
-            Eigen::Affine2f rot_2 = Eigen::Translation2f(0, r) * Eigen::Rotation2Df(phi);
+            // now for the closest point, which depends on omega.
+            Eigen::Affine2f rot_2 = Eigen::Translation2f(0, r) * Eigen::Rotation2Df(omega);
             obst_endpt = rot_2 * r_rot;
-
-            // outer_side = true;
-            // cout << "outer side hit" << endl;
         }
 
         if (r_tl <= r_p && r_p <= r_tr) {    // front side hit
-            phi = asin(h / r_p);
-            length = (theta - phi) * c.norm();
+            omega = asin(h / r_p);
+            length = (theta - omega) * c.norm();
 
-            // now for the closest point, which depends on phi.
-            Eigen::Affine2f rot_2 = Eigen::Translation2f(0, r) * Eigen::Rotation2Df(phi);
+            // now for the closest point, which depends on omega.
+            Eigen::Affine2f rot_2 = Eigen::Translation2f(0, r) * Eigen::Rotation2Df(omega);
             obst_endpt = rot_2 * r_rot;
-
-            // front_side = true;
-            // cout << "front side hit" << endl;
         }
 
         // At this point the feasible fpl has been calculated like we want it.
         if (length < path_option.free_path_length && length > 0) {
             path_option.free_path_length = length;
             path_option.obstruction = p;
-            path_option.closest_point = obst_endpt;
+            
+            path_option.closest_point = obst_endpt; // the obstructed_endpt calculation needs to be fixed. sometimes it falls behind the robot.
         }
     }
-	// if (inner_side)
-	//  	cout << "intersecting particle found with inner side" << endl;
-	// if (outer_side)
-	//	cout << "intersecting particle found with outer side" << endl;
-	//if (front_side)
-	//	cout << "intersecting particle found with front side" << endl;
 
-    // float theta = M_PI / 2;
-    // if (path_option.obstruction != Eigen::Vector2f::Zero()) {
-    //     theta = curvature < 0 ? atan2(path_option.obstruction[0], path_option.obstruction[1]- c[1]) :
-    //         atan2(path_option.obstruction[0], c[1] - path_option.obstruction[1]);
-    // }
     // clearance
-    // path_option.clearance = 100; // some large number
     for (auto p: point_cloud) {
-        float theta_p =  curvature < 0 ? atan2(p[0], p[1]- c[1]) :
-            atan2(p[0], c[1] - p[1]);
+        float theta_p =  curvature < 0 ? atan2(p[0], p[1]- c[1]) : atan2(p[0], c[1] - p[1]);
         float path_len_p = theta_p * (p-c).norm();
         if (path_len_p >=0 and path_len_p < path_option.free_path_length) {  // if p is within the fp length
             float inner = abs((c - p).norm() - r_inner);
             float outer = abs((c - p).norm() - r_tr);
-            float clearance_p = fmin(std::min(inner, outer), clearance_cap);
+            float clearance_p = fmin(std::min(inner, outer), .005);
             if (clearance_p < path_option.clearance) {
                 path_option.clearance = clearance_p;
                 path_option.obstruction = p;
