@@ -57,7 +57,6 @@ void setPathOption(navigation::PathOption& path_option,
                 float clearance_p = abs(p[1]) - robot_config.width / 2 - robot_config.safety_margin;
                 if (clearance_p < path_option.clearance) {
                     path_option.clearance = clearance_p;
-                    path_option.closest_point = p;
                 }
             }
         }
@@ -67,6 +66,7 @@ void setPathOption(navigation::PathOption& path_option,
         path_option.closest_point = Vector2f(std::min(carrot_loc.x(), path_option.free_path_length), 0);
         if (carrot_loc.x() < path_option.free_path_length) {
             path_option.closest_point = Vector2f(carrot_loc.x(), 0);
+            path_option.dist_to_closest_point = carrot_loc.x();
         }
         return;
     }
@@ -141,6 +141,8 @@ void setPathOption(navigation::PathOption& path_option,
         theta = 2 * M_PI - theta;
     }
 
+    path_option.dist_to_closest_point = theta * c.norm();
+
     float theta_end = path_option.free_path_length / c.norm();
     if (theta_end < theta) {
         theta_end -= M_PI/2;
@@ -149,6 +151,7 @@ void setPathOption(navigation::PathOption& path_option,
         }
         Vector2f end_point = c + Vector2f(cos(theta_end), sin(theta_end)) * c.norm();
         path_option.closest_point = end_point;
+        path_option.dist_to_closest_point = path_option.free_path_length;
     }
 }
 
@@ -183,11 +186,11 @@ vector<navigation::PathOption> samplePathOptions(int num_options,
 
 
 float score(float free_path_length, float goal_dist, float clearance) {
-    const float w1 = 1;
-    const float w2 = 0;
-    const float w3 = 0.1;
+    const float w1 = 10;
+    const float w2 = 5;
+    const float w3 = 0;
     // TODO: currently we are weighting this 0 but will have to tune this later
-    return w1 * free_path_length + w2 * goal_dist + w3 * clearance;
+    return w1 * free_path_length + w2 / goal_dist + w3 * clearance;
 }
 
 // returns the index of the selected path
@@ -197,8 +200,9 @@ int selectPath(const vector<navigation::PathOption>& path_options, Eigen::Vector
     int selected_path = 0;
     float best_score = 0;
     for (unsigned int i = 0; i < path_options.size(); i++) {
-        double goal_dist = pow(carrot_loc.x() - path_options[i].closest_point.x(), 2) +  pow(carrot_loc.y() - path_options[i].closest_point.y(), 2);
-        float s = score(path_options[i].free_path_length, goal_dist, path_options[i].clearance);
+        double goal_dist = (carrot_loc - path_options[i].closest_point).norm();
+        float s = score(path_options[i].dist_to_closest_point, goal_dist, path_options[i].clearance);
+        // cout << i << " " << s << endl;
         if (s > best_score) {
             best_score = s;
             selected_path = i;
