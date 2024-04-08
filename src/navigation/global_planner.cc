@@ -304,19 +304,36 @@ void GlobalPlanner::plan_global_path() {
 
 
 // return next carrot point
-bool GlobalPlanner::get_carrot(Eigen::Vector2f& curr_loc, float curr_angle, Eigen::Vector2f* carrot_loc) {
+bool GlobalPlanner::get_carrot(Eigen::Vector2f& curr_loc, float curr_angle, Eigen::Vector2f* carrot_loc, amrl_msgs::VisualizationMsg & viz_msg) {
     // decide what vertex on the path to return next
     // divide by SCALE_FACTOR to get back from "int" to float
     if (global_path_.size() == 0) {
         return false;
     }
 
-    if (!inside_cell(start_cell_, curr_loc)) {
+    // if car is not in any voronoi cells, invalidate plan
+    // for some reason, this is invalidating plans too often. it doesn't think we're in a cell?
+    // also, when one of the edges is infinite, it doesn't think we're in a cell
+    // Eigen::Vector2f scaled_curr(curr_loc.x() * SCALE_FACTOR, curr_loc.y() * SCALE_FACTOR);
+    // if (!inside_cell(start_cell_, scaled_curr, viz_msg)) {
+    //     std::cout << "not inside start cell " << start_cell_ << std::endl;
+    //     return false;
+    // }
+    // really we just need to check that we're close to the edge from start to our first carrot
+
+    // list_head is path start. increment to get next node on path
+    auto list_head = global_path_.begin();
+    auto list_next = global_path_.begin();
+    std::advance(list_next, 1);
+    line2f start_carrot((*list_next).first, (*list_next).second, (*list_head).first, (*list_head).second);
+    visualization::DrawLine(start_carrot.p0, start_carrot.p1, 0x12098D, viz_msg);
+    double proj_dist = projected_dist(curr_loc, start_carrot);
+    // cout << "dist to line" << proj_dist << endl;
+    if (proj_dist > 1) {
         return false;
     }
+    *carrot_loc = Eigen::Vector2f((*list_next).first, (*list_next).second);
 
-    // return the first point
-    *carrot_loc = Eigen::Vector2f(global_path_.front().first, global_path_.front().second);
     return true;
 }
 

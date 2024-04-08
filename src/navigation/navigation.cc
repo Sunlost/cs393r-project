@@ -36,6 +36,7 @@
 #include "path_options.h"
 #include "latency_compensation.h"
 #include "global_planner.h" 
+#include <signal.h>
 
 using Eigen::Vector2f;
 using amrl_msgs::AckermannCurvatureDriveMsg;
@@ -92,8 +93,10 @@ void Navigation::SetNavGoal(const Vector2f& loc, float angle) {
   // time to voronoi
   nav_goal_loc_ = loc;
   nav_goal_angle_ = angle;
-  // global_planner_.initialize(map_, nav_goal_loc_.x(), nav_goal_loc_.y());
   global_planner_.set_goal(nav_goal_loc_.x(), nav_goal_loc_.y());
+  global_planner_.set_start(robot_loc_.x(), robot_loc_.y());
+  global_planner_.construct_map(map_);
+  global_planner_.plan_global_path();
   goal_established_ = true;
 
 
@@ -172,6 +175,11 @@ void Navigation::Run() {
   // If odometry has not been initialized or goal has not been set, we can't do anything.
   if (!odom_initialized_ || !goal_established_) return;
 
+  if ((robot_loc_ - nav_goal_loc_).squaredNorm() < 0.25){
+    drive_msg_.velocity = 0;
+    return;
+  }
+
   // The control iteration goes here. 
   // Feel free to make helper functions to structure the control appropriately.
   
@@ -191,18 +199,21 @@ void Navigation::Run() {
   // else, run 1dtoc on our carrot
 
 
-  Eigen::Vector2f carrot_loc = Eigen::Vector2f::Zero();
-  bool carrot_found = global_planner_.get_carrot(robot_loc_, robot_angle_, &carrot_loc);
+  Eigen::Vector2f carrot_loc = nav_goal_loc_;
+  bool carrot_found = global_planner_.get_carrot(robot_loc_, robot_angle_, &carrot_loc, global_viz_msg_);
   if(!carrot_found) {
     global_planner_.set_start(robot_loc_.x(), robot_loc_.y());
     global_planner_.construct_map(map_);
     global_planner_.plan_global_path();
-    carrot_found = global_planner_.get_carrot(robot_loc_, robot_angle_, &carrot_loc);
-    assert(carrot_found);
+    carrot_found = global_planner_.get_carrot(robot_loc_, robot_angle_, &carrot_loc, global_viz_msg_);
+    if(!carrot_found) {
+      raise(SIGSEGV);
+    }
   }
 
-  vector<PathOption> path_options = samplePathOptions(31, point_cloud_, robot_config_, carrot_loc);
-  int best_path = selectPath(path_options, carrot_loc);
+  visualization::DrawCross(carrot_loc, 1, 0xFF0000, global_viz_msg_);
+  vector<PathOption> path_options = samplePathOptions(31, point_cloud_, robot_config_, carrot_loc - robot_loc_);
+  int best_path = selectPath(path_options, carrot_loc - robot_loc_);
 
   drive_msg_.curvature = path_options[best_path].curvature;
   drive_msg_.velocity = run1DTimeOptimalControl(path_options[best_path].free_path_length, current_speed, robot_config_);
@@ -221,7 +232,7 @@ void Navigation::Run() {
 // Find the closest point in the point cloud
 
   // Plot the closest point in purple
-  visualization::DrawLine(path_options[best_path].closest_point, Vector2f(0, 1/path_options[best_path].curvature), 0xFF00FF, local_viz_msg_);
+  visualization::DrawCross(path_options[best_path].closest_point, .4, 0xFF00FF, local_viz_msg_);
   // for debugging
   global_planner_.visualize_voronoi(global_viz_msg_);
   global_planner_.visualize_global_plan(global_viz_msg_);
