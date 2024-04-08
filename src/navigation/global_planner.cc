@@ -361,9 +361,9 @@ bool GlobalPlanner::get_carrot(Eigen::Vector2f& curr_loc, float curr_angle, Eige
 
     Eigen::Vector2f circle_center((furthest_points.first.x() + furthest_points.second.x()) / 2, (furthest_points.first.y() + furthest_points.second.y()) / 2);
     // uncomment for viz
-    // visualization::DrawArc(circle_center, sqrt(farthest_dist) / 2, 0, 360, 0x2398DB, viz_msg);
-    // visualization::DrawCross(furthest_points.first, 1, 0x2398DB, viz_msg);
-    // visualization::DrawCross(furthest_points.second, 1, 0x2398DB, viz_msg);
+    visualization::DrawArc(circle_center, sqrt(farthest_dist) / 2, 0, 360, 0x2398DB, viz_msg);
+    visualization::DrawCross(furthest_points.first, 1, 0x2398DB, viz_msg);
+    visualization::DrawCross(furthest_points.second, 1, 0x2398DB, viz_msg);
 
     // check if robot is in the radius of this circle
     // circle radius is sqrt(farthest_dist) / 2
