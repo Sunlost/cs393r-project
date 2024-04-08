@@ -7,6 +7,7 @@
 // out vel
 
 // do this on path option after selecting it
+const float clearance_cap = .005;
 
 float run1DTimeOptimalControl(float dist_to_go, float current_speed, const navigation::NavigationParams& robot_config) {
     float max_accel = robot_config.max_accel;
@@ -54,9 +55,10 @@ void setPathOption(navigation::PathOption& path_option,
         // clearance
         for (auto p: point_cloud) {
             if (p[0] >=0 and p[0] < path_option.free_path_length) {
-                float clearance_p = abs(p[1]) - robot_config.width / 2 - robot_config.safety_margin;
+                float clearance_p = std::min(abs(p[1]) - robot_config.width / 2 - robot_config.safety_margin, clearance_cap);
                 if (clearance_p < path_option.clearance) {
                     path_option.clearance = clearance_p;
+                    path_option.obstruction = p;
                 }
             }
         }
@@ -121,10 +123,10 @@ void setPathOption(navigation::PathOption& path_option,
         if (path_len_p >=0 and path_len_p < path_option.free_path_length) {  // if p is within the fp length
             float inner = abs((c - p).norm() - r_inner);
             float outer = abs((c - p).norm() - r_tr);
-            float clearance_p = std::min(inner, outer);
+            float clearance_p = std::min(std::min(inner, outer), clearance_cap);
             if (clearance_p < path_option.clearance) {
                 path_option.clearance = clearance_p;
-                // path_option.closest_point = p;
+                path_option.obstruction = p;
             }
         }
     }
