@@ -196,6 +196,8 @@ void Navigation::Run() {
     if(!carrot_found) {
       drive_msg_.velocity = 0;
       goal_established_ = false;
+      // print no carrot found
+      cout << "No carrot found" << endl;
       return;
     }
   // }
