@@ -201,10 +201,6 @@ void Navigation::Run() {
   // }
   visualization::DrawCross(carrot_loc, 1, 0xFF0000, global_viz_msg_);
 
-  bool reaching_goal = false;
-  if (nav_goal_loc_ == carrot_loc) {
-    reaching_goal = true;
-  }
 
   // cout << "0 "<<carrot_loc.x() << " " << carrot_loc.y() << endl;
   
@@ -230,6 +226,8 @@ void Navigation::Run() {
   drive_msg_.velocity = run1DTimeOptimalControl(path_options[best_path].free_path_length, current_speed, robot_config_);
 	
   // cout << drive_msg_.curvature << " " << drive_msg_.velocity << endl;
+  // print free path length and drive_msg_.velocity
+  cout << path_options[best_path].free_path_length << " " << drive_msg_.velocity << endl;
 
   // visualization here
   visualization::DrawRectangle(Vector2f(robot_config_.length/2 - robot_config_.base_link_offset, 0),
