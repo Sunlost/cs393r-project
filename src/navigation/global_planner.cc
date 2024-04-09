@@ -54,14 +54,25 @@ float projected_dist(const Eigen::Vector2f& point, const line2f& line) {
 
 
 // returns smallest gap size between two lines
-float get_gap_size(const line2f &c1, const line2f &c2) {
-    // get the minimum distance between the two lines
-    float d1 = projected_dist(c1.p0, c2);
-    float d2 = projected_dist(c1.p1, c2);
-    float d3 = projected_dist(c2.p0, c1);
-    float d4 = projected_dist(c2.p1, c1);
-    float min_dist = std::min(std::min(d1, d2), std::min(d3, d4));
-    return min_dist;
+// float get_gap_size(const line2f &c1, const line2f &c2) {
+//     // get the minimum distance between the two lines
+//     float d1 = projected_dist(c1.p0, c2);
+//     float d2 = projected_dist(c1.p1, c2);
+//     float d3 = projected_dist(c2.p0, c1);
+//     float d4 = projected_dist(c2.p1, c1);
+//     float min_dist = std::min(std::min(d1, d2), std::min(d3, d4));
+//     return min_dist;
+// }
+
+float get_gap_size(const Eigen::Vector2f &c1, const Eigen::Vector2f &c2) {
+    // // get the minimum distance between the two lines
+    // float d1 = projected_dist(c1.p0, c2);
+    // float d2 = projected_dist(c1.p1, c2);
+    // float d3 = projected_dist(c2.p0, c1);
+    // float d4 = projected_dist(c2.p1, c1);
+    // float min_dist = std::min(std::min(d1, d2), std::min(d3, d4));
+    // return min_dist;
+    return (c1 - c2).norm();
 }
 
 
@@ -114,7 +125,27 @@ void GlobalPlanner::set_start(float start_x, float start_y) {
     start_ = Eigen::Vector2f(start_x, start_y);
 }
 
+// Function to perform linear interpolation between two Eigen Vector2f endpoints
+vector<Eigen::Vector2f> interpolate_points(const Eigen::Vector2f& p1, const Eigen::Vector2f& p2, float spacing_distance) {
+    vector<Eigen::Vector2f> interpolated_points;
 
+    // Calculate the total distance between p1 and p2
+    float total_distance = (p2 - p1).norm();
+
+    // Calculate the number of segments based on spacing distance
+    int num_segments = std::max(1, static_cast<int>(total_distance / spacing_distance));
+
+    // Calculate the increment for parameter t
+    float delta_t = 1.0f / num_segments;
+
+    for (int i = 1; i <= num_segments; ++i) {
+        float t = i * delta_t;
+        Eigen::Vector2f interpolated_point = p1 + t * (p2 - p1);
+        interpolated_points.push_back(interpolated_point);
+    }
+
+    return interpolated_points;
+}
 
 void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
     vb_.clear();
@@ -124,23 +155,23 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
 
     // insert the goal point into the voronoi builder
     vb_.insert_point(goal_coords_.first, goal_coords_.second);
-    global_map_.emplace_back(line2f(goal_.x(), goal_.y(), goal_.x(), goal_.y()));
+    global_map_.push_back(goal_);
 
     // insert start point into the voronoi builder
     vb_.insert_point(start_.x() * SCALE_FACTOR, start_.y() * SCALE_FACTOR);
-    global_map_.emplace_back(line2f(start_.x(), start_.y(), start_.x(), start_.y()));
-
-    global_map_.insert(global_map_.end(), map.lines.begin(), map.lines.end());
+    global_map_.push_back(start_);
 
     // insert map geometry into the voronoi builder
     for (size_t i = 0; i < map.lines.size(); i++) {
         const line2f map_line = map.lines[i];
-        vb_.insert_segment(
-            map_line.p0.x() * SCALE_FACTOR,
-            map_line.p0.y() * SCALE_FACTOR,
-            map_line.p1.x() * SCALE_FACTOR,
-            map_line.p1.y() * SCALE_FACTOR
-        );
+        vector<Eigen::Vector2f> vec = interpolate_points(map_line.p0, map_line.p1, .2);
+        for (const auto & p : vec) {
+            vb_.insert_point(
+                p.x() * SCALE_FACTOR,
+                p.y() * SCALE_FACTOR
+            );
+            global_map_.push_back(p);
+        }
     }
 
     // construct the voronoi diagram
@@ -171,8 +202,8 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
                 
                 // cells are built around a source (obstacle). source_index is 
                 // the order the obstacles were added to the map
-                line2f l1 = global_map_[edge->cell()->source_index()];
-                line2f l2 = global_map_[edge->twin()->cell()->source_index()];
+                Eigen::Vector2f l1 = global_map_[edge->cell()->source_index()];
+                Eigen::Vector2f l2 = global_map_[edge->twin()->cell()->source_index()];
                 if (get_gap_size(l1, l2) > 0.5) {
                     edge_map[this_vertex].push_back(destination_vertex);
                 }

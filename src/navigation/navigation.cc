@@ -165,6 +165,7 @@ void Navigation::Run() {
   // robot is within .5m of goal, consider it reached
   if ((robot_loc_ - nav_goal_loc_).squaredNorm() < 0.25){
     drive_msg_.velocity = 0;
+    cout << "Goal Reached" << endl;
     return;
   }
 
@@ -200,6 +201,11 @@ void Navigation::Run() {
   // }
   visualization::DrawCross(carrot_loc, 1, 0xFF0000, global_viz_msg_);
 
+  bool reaching_goal = false;
+  if (nav_goal_loc_ == carrot_loc) {
+    reaching_goal = true;
+  }
+
   // cout << "0 "<<carrot_loc.x() << " " << carrot_loc.y() << endl;
   
   // transform carrot_loc to robot frame
@@ -219,8 +225,9 @@ void Navigation::Run() {
 
   // cout << "best path "<< best_path << endl;
 
+
   drive_msg_.curvature = path_options[best_path].curvature;
-  drive_msg_.velocity = run1DTimeOptimalControl(path_options[best_path].dist_to_closest_point, current_speed, robot_config_);
+  drive_msg_.velocity = run1DTimeOptimalControl(path_options[best_path].free_path_length, current_speed, robot_config_);
 	
   // cout << drive_msg_.curvature << " " << drive_msg_.velocity << endl;
 
