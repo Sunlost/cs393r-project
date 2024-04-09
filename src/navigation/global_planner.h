@@ -29,7 +29,7 @@ public:
     // our currently-planned path
     list<pair<float, float>> global_path_;
     // list of current map lines
-    std::vector<geometry::line2f> global_map_;
+    std::vector<Eigen::Vector2f> global_map_;
 
 // CONSTANT VARIABLES
     // multiplier for all float coordinate points to prevent full decimal loss when converted

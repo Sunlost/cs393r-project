@@ -56,7 +56,7 @@ struct NavigationParams {
   // frequency
   float dt = .05f;
   // max velocity
-  float max_vel = 5.0f;
+  float max_vel = 1.0f;
   // max acceleration
   float max_accel = 4.0f;
   float max_decel = 4.0f;
