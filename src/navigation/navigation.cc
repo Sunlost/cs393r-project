@@ -347,6 +347,8 @@ void Navigation::Run() {
       // todo twist thing
       // drive_msg_.velocity = 0;
       goal_established_ = false;
+      // print no carrot found
+      cout << "No carrot found" << endl;
       return;
     }
   // }
