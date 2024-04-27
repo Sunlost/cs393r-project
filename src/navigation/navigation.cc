@@ -106,9 +106,7 @@ Navigation::Navigation(const string &map_name, const std::shared_ptr<rclcpp::Nod
 }
 
 void Navigation::SetNavGoal(const Vector2f& loc, float angle) {
-  // print
-  cout << "Setting new goal" << endl;
-
+  cout << "set nav goal" << endl;
   // time to voronoi
   nav_goal_loc_ = loc;
   nav_goal_angle_ = angle;

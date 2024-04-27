@@ -80,8 +80,6 @@ bool run_ = true;
 sensor_msgs::msg::LaserScan last_laser_msg_;
 Navigation* navigation_ = nullptr;
 NavigationParams* robot_config_ = nullptr; // use default values for now, but read from config later
-sensor_msgs::msg::LaserScan last_laser_msg_;
-Navigation *navigation_ = nullptr;
 
 void LaserCallback(const sensor_msgs::msg::LaserScan &msg) {
     cout << "laser callback" << endl;
