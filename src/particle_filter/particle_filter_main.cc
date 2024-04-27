@@ -86,8 +86,8 @@ rclcpp::Publisher<sensor_msgs::msg::LaserScan>::SharedPtr laser_publisher_;
 std::shared_ptr<rclcpp::Node> node_;
 VisualizationMsg vis_msg_;
 VisualizationMsg local_viz_msg_;
-amrl_msgs::Localization2DMsg localization_msg_;
-sensor_msgs::LaserScan last_laser_msg_;
+amrl_msgs::msg::Localization2DMsg localization_msg_;
+sensor_msgs::msg::LaserScan last_laser_msg_;
 
 vector<Vector2f> trajectory_points_;
 string current_map_;
@@ -179,7 +179,7 @@ void PublishVisualization() {
   vis_msg_.header.stamp = node_->get_clock()->now();
   ClearVisualizationMsg(vis_msg_);
 
-  local_viz_msg_.header.stamp = ros::Time::now();
+  local_viz_msg_.header.stamp = node_->get_clock()->now();
   ClearVisualizationMsg(local_viz_msg_);
 
   PublishParticles();

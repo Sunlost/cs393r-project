@@ -1,9 +1,16 @@
 #include "gflags/gflags.h"
 #include "eigen3/Eigen/Dense"
 #include "eigen3/Eigen/Geometry"
-#include "amrl_msgs/AckermannCurvatureDriveMsg.h"
-#include "amrl_msgs/Pose2Df.h"
-#include "amrl_msgs/VisualizationMsg.h"
+#include "amrl_msgs/msg/localization2_d_msg.hpp"
+#include "gflags/gflags.h"
+#include "geometry_msgs/msg/pose2_d.hpp"
+#include "geometry_msgs/msg/pose_array.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
+#include "sensor_msgs/msg/laser_scan.hpp"
+#include "visualization_msgs/msg/marker.hpp"
+#include "visualization_msgs/msg/marker_array.hpp"
+#include "nav_msgs/msg/odometry.hpp"
 #include "glog/logging.h"
 #include "ros/ros.h"
 #include "ros/package.h"
@@ -18,7 +25,7 @@
 
 using Eigen::Vector2f;
 using amrl_msgs::AckermannCurvatureDriveMsg;
-using amrl_msgs::VisualizationMsg;
+using amrl_msgs::msg::VisualizationMsg;
 using std::string;
 using std::vector;
 

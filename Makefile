@@ -18,10 +18,10 @@ all: build/CMakeLists.txt.copy
 	$(MAKE) --no-print-directory -C build
 
 docker_all: docker_build_q
-	docker run --rm --volume "$(shell pwd)":/home/dev/cs393r_starter turtlebot_cs393r_starter "cd cs393r_starter && colcon build --packages-select cs393r_starter"
+	docker run --rm --volume "$(shell pwd)":/home/dev/cs393r-project turtlebot_cs393r_starter "cd cs393r-project && colcon build --packages-select cs393r-project"
 
 docker_shell: docker_build_q
-	if [ $(shell docker ps -a -f name=turtlebot_cs393r_starter_shell | wc -l) -ne 2 ]; then docker run -dit --name turtlebot_cs393r_starter_shell --volume "$(shell pwd)":/home/dev/cs393r_starter --workdir /home/dev/cs393r_starter -p 10272:10272 turtlebot_cs393r_starter; fi
+	if [ $(shell docker ps -a -f name=turtlebot_cs393r_starter_shell | wc -l) -ne 2 ]; then docker run -dit --name turtlebot_cs393r_starter_shell --volume "$(shell pwd)":/home/dev/cs393r-project --workdir /home/dev/cs393r-project -p 10272:10272 turtlebot_cs393r_starter; fi
 	docker exec -it turtlebot_cs393r_starter_shell bash -l
 
 docker_stop:

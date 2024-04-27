@@ -31,16 +31,8 @@
 #include "gflags/gflags.h"
 #include "eigen3/Eigen/Dense"
 #include "eigen3/Eigen/Geometry"
-#include "amrl_msgs/Localization2DMsg.h"
-#include "geometry_msgs/Pose2D.h"
-#include "geometry_msgs/PoseArray.h"
-#include "geometry_msgs/PoseStamped.h"
-#include "geometry_msgs/PoseWithCovarianceStamped.h"
-#include "sensor_msgs/LaserScan.h"
-#include "visualization_msgs/Marker.h"
-#include "visualization_msgs/MarkerArray.h"
-#include "nav_msgs/Odometry.h"
-#include "ros/ros.h"
+// #include "nav_msgs/Odometry.h"
+// #include "ros/ros.h"
 #include "amrl_msgs/msg/localization2_d_msg.hpp"
 #include "gflags/gflags.h"
 #include "geometry_msgs/msg/pose2_d.hpp"
@@ -65,7 +57,6 @@ using math_util::DegToRad;
 using math_util::RadToDeg;
 using navigation::Navigation;
 using navigation::NavigationParams;
-using ros::Time;
 using ros_helpers::Eigen3DToRosPoint;
 using ros_helpers::Eigen2DToRosPoint;
 using ros_helpers::RosPoint;
@@ -86,13 +77,12 @@ DEFINE_string(robot_config, "config/navigation.lua", "Robot config file");
 
 
 bool run_ = true;
-sensor_msgs::LaserScan last_laser_msg_;
+sensor_msgs::msg::LaserScan last_laser_msg_;
 Navigation* navigation_ = nullptr;
 NavigationParams* robot_config_ = nullptr; // use default values for now, but read from config later
-sensor_msgs::msg::LaserScan last_laser_msg_;
-Navigation *navigation_ = nullptr;
 
 void LaserCallback(const sensor_msgs::msg::LaserScan &msg) {
+    cout << "laser callback" << endl;
     if (FLAGS_v > 0) {
         printf("Laser t=%f, dt=%f\n",
                ros_helpers::rosHeaderStampToSeconds(msg.header),
@@ -100,30 +90,6 @@ void LaserCallback(const sensor_msgs::msg::LaserScan &msg) {
     }
     // Location of the laser on the robot. Assumes the laser is forward-facing.
     const Vector2f kLaserLoc(0.2, 0);
-
-  static vector<Vector2f> point_cloud_;
-  // TODO Convert the LaserScan to a point cloud
-  // The LaserScan parameters are accessible as follows:
-  // msg.angle_increment // Angular increment between subsequent rays
-  // msg.angle_max // Angle of the first ray
-  // msg.angle_min // Angle of the last ray
-  // msg.range_max // Maximum observable range
-  // msg.range_min // Minimum observable range
-  // msg.ranges[i] // The range of the i'th ray
-
-  // save the pointcloud in the robot's frame
-  point_cloud_.clear();
-  for (size_t i = 0; i < msg.ranges.size(); i++) {
-    if (msg.ranges[i] > msg.range_min && msg.ranges[i] < msg.range_max) {
-      const float angle = msg.angle_min + i * msg.angle_increment;
-      const Vector2f point(kLaserLoc[0] + msg.ranges[i] * cos(angle), kLaserLoc[1] + msg.ranges[i] * sin(angle)); // Was not added before, need to verify
-      // const Vector2f point(msg.ranges[i] * sin(angle), -msg.ranges[i] * cos(angle));
-      point_cloud_.push_back(point);
-    }
-  }
-  
-  navigation_->ObservePointCloud(point_cloud_, msg.header.stamp.toSec());
-  last_laser_msg_ = msg;
     static vector<Vector2f> point_cloud_;
     // TODO Convert the LaserScan to a point cloud
     // The LaserScan parameters are accessible as follows:
@@ -133,11 +99,22 @@ void LaserCallback(const sensor_msgs::msg::LaserScan &msg) {
     // msg.range_max // Maximum observable range
     // msg.range_min // Minimum observable range
     // msg.ranges[i] // The range of the i'th ray
+      // save the pointcloud in the robot's frame
+    point_cloud_.clear();
+    for (size_t i = 0; i < msg.ranges.size(); i++) {
+        if (msg.ranges[i] > msg.range_min && msg.ranges[i] < msg.range_max) {
+        const float angle = msg.angle_min + i * msg.angle_increment;
+        const Vector2f point(kLaserLoc[0] + msg.ranges[i] * cos(angle), kLaserLoc[1] + msg.ranges[i] * sin(angle)); // Was not added before, need to verify
+        // const Vector2f point(msg.ranges[i] * sin(angle), -msg.ranges[i] * cos(angle));
+        point_cloud_.push_back(point);
+        }
+    }
     navigation_->ObservePointCloud(point_cloud_, ros_helpers::rosHeaderStampToSeconds(msg.header));
     last_laser_msg_ = msg;
 }
 
 void OdometryCallback(const nav_msgs::msg::Odometry &msg) {
+    cout << "odom callback" << endl;
     if (FLAGS_v > 0) {
         printf("Odometry t=%f\n", ros_helpers::rosHeaderStampToSeconds(msg.header));
     }
@@ -149,6 +126,7 @@ void OdometryCallback(const nav_msgs::msg::Odometry &msg) {
 }
 
 void GoToCallback(const geometry_msgs::msg::PoseStamped &msg) {
+    cout << "go to callback" << endl;
     const Vector2f loc(msg.pose.position.x, msg.pose.position.y);
     const float angle =
             2.0 * atan2(msg.pose.orientation.z, msg.pose.orientation.w);
@@ -166,6 +144,7 @@ void SignalHandler(int) {
 }
 
 void LocalizationCallback(const amrl_msgs::msg::Localization2DMsg msg) {
+    cout << "localization callback" << endl;
     if (FLAGS_v > 0) {
         printf("Localization t=%f\n", GetWallTime());
     }
@@ -181,15 +160,11 @@ void StringCallback(const std_msgs::msg::String &msg) {
     signal(SIGINT, SignalHandler);
     // Initialize ROS.
     rclcpp::init(argc, argv);
-    ros::init(argc, argv, "navigation", ros::init_options::NoSigintHandler);
-    ros::NodeHandle n;
-    navigation_ = new Navigation(FLAGS_map, &n);
     robot_config_ = new NavigationParams();
-    navigation_->SetLatencyCompensation(new LatencyCompensation(robot_config_->actuation_latency, robot_config_->observation_latency, robot_config_->dt));
-
 
     std::shared_ptr<rclcpp::Node> node = std::make_shared<rclcpp::Node>("ut_navigation");
     navigation_ = new Navigation(FLAGS_map, node);
+    navigation_->SetLatencyCompensation(new LatencyCompensation(robot_config_->actuation_latency, robot_config_->observation_latency, robot_config_->dt));
 
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr string_sub = node->create_subscription<std_msgs::msg::String>(
             "string_topic", 1, &StringCallback);

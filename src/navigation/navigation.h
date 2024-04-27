@@ -25,7 +25,6 @@
 
 #include "vector_map/vector_map.h"
 #include "latency_compensation.h"
-#include "global_planner.h"
 
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_action/rclcpp_action.hpp>
@@ -34,6 +33,8 @@
 #include <irobot_create_msgs/action/rotate_angle.hpp>
 #include <chrono>
 #include <memory>
+#include "global_planner.h"
+
 
 #ifndef NAVIGATION_H
 #define NAVIGATION_H
