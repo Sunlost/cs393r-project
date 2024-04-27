@@ -1,6 +1,16 @@
 #include <queue>
-#include "amrl_msgs/AckermannCurvatureDriveMsg.h"
-#include "ros/ros.h"
+// #include "amrl_msgs/AckermannCurvatureDriveMsg.h"
+// #include "ros/ros.h"
+#include "amrl_msgs/msg/localization2_d_msg.hpp"
+#include "gflags/gflags.h"
+#include "geometry_msgs/msg/pose2_d.hpp"
+#include "geometry_msgs/msg/pose_array.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
+#include "sensor_msgs/msg/laser_scan.hpp"
+#include "visualization_msgs/msg/marker.hpp"
+#include "visualization_msgs/msg/marker_array.hpp"
+#include "nav_msgs/msg/odometry.hpp"
 #include "eigen3/Eigen/Dense"
 
 #ifndef LATENCY_COMPENSATION_H
@@ -63,11 +73,11 @@ public:
         last_observation_time_ = time - observation_latency_;
     };
 
-    Observation getPredictedState() {
+    Observation getPredictedState(double node_time) {
         Observation predictedState = {last_x_, last_y_, last_theta_, 0.0, 0.0, 0.0, last_observation_time_};
 	// cout << "last observed state: " << last_observation_.x << " " << last_observation_.y << endl;
         double control_cutoff_time_ = last_observation_time_ - actuation_latency_;
-        double current_time = ros::Time::now().toSec() - actuation_latency_;
+        double current_time = node_time - actuation_latency_;
 
         while (control_queue_.size() > 0 && control_queue_.front().time < control_cutoff_time_) 
             control_queue_.pop();

@@ -8,11 +8,12 @@
 #include "eigen3/Eigen/Dense"
 #include "eigen3/Eigen/Geometry"
 #include "shared/math/geometry.h"
-#include "amrl_msgs/VisualizationMsg.h"
 #include <cstddef>
 #include <cstdint>
 #include <utility>
-
+#include "visualization_msgs/msg/marker.hpp"
+#include "visualization_msgs/msg/marker_array.hpp"
+#include "amrl_msgs/msg/visualization_msg.hpp"
 using std::list;
 using std::map;
 
@@ -76,13 +77,13 @@ public:
     void plan_global_path();
 
     // get a carrot for the local navigation code to work towards
-    bool get_carrot(Eigen::Vector2f& curr_loc, float curr_angle, Eigen::Vector2f* carrot_loc, amrl_msgs::VisualizationMsg & viz_msg);
+    bool get_carrot(Eigen::Vector2f& curr_loc, float curr_angle, Eigen::Vector2f* carrot_loc, amrl_msgs::msg::VisualizationMsg & viz_msg);
 
     // visualizes global plan on map
-    void visualize_global_plan(amrl_msgs::VisualizationMsg & viz_msg, uint32_t color = 0xff00ff);
+    void visualize_global_plan(amrl_msgs::msg::VisualizationMsg & viz_msg, uint32_t color = 0xff00ff);
     
     // visualizes our voronoi diagram on map
-    void visualize_voronoi(amrl_msgs::VisualizationMsg & viz_msg, uint32_t color = 0xff0000);
+    void visualize_voronoi(amrl_msgs::msg::VisualizationMsg & viz_msg, uint32_t color = 0xff0000);
 };
 
 #endif // GLOBAL_PLANNER_H

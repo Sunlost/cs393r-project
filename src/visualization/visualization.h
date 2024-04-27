@@ -70,7 +70,7 @@ void DrawRectangle(const Eigen::Vector2f& center,
                    float width,
                    float angle,
                    uint32_t color,
-                   amrl_msgs::VisualizationMsg& msg);
+                   amrl_msgs::msg::VisualizationMsg& msg);
 
 void DrawPathOption(const float curvature,
                     const float distance,

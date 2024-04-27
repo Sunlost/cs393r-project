@@ -6,7 +6,18 @@
 
 // other project file headers
 #include "vector_map/vector_map.h"
-#include "amrl_msgs/AckermannCurvatureDriveMsg.h"
+#include "amrl_msgs/msg/localization2_d_msg.hpp"
+#include "gflags/gflags.h"
+#include "geometry_msgs/msg/pose2_d.hpp"
+#include "geometry_msgs/msg/pose_array.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
+#include "sensor_msgs/msg/laser_scan.hpp"
+#include "visualization_msgs/msg/marker.hpp"
+#include "visualization_msgs/msg/marker_array.hpp"
+#include "amrl_msgs/msg/visualization_msg.hpp"
+
+#include "nav_msgs/msg/odometry.hpp"
 #include "simple_queue.h"
 #include "global_planner.h"
 
@@ -343,7 +354,7 @@ void GlobalPlanner::plan_global_path() {
 
 
 // return next carrot point
-bool GlobalPlanner::get_carrot(Eigen::Vector2f& curr_loc, float curr_angle, Eigen::Vector2f* carrot_loc, amrl_msgs::VisualizationMsg & viz_msg) {
+bool GlobalPlanner::get_carrot(Eigen::Vector2f& curr_loc, float curr_angle, Eigen::Vector2f* carrot_loc, amrl_msgs::msg::VisualizationMsg & viz_msg) {
     // decide what vertex on the path to return next
     // divide by SCALE_FACTOR to get back from "int" to float
     // print get_carrot called
@@ -384,7 +395,7 @@ bool GlobalPlanner::get_carrot(Eigen::Vector2f& curr_loc, float curr_angle, Eige
 
 
 // visualize our plan on the map
-void GlobalPlanner::visualize_global_plan(amrl_msgs::VisualizationMsg & viz_msg, uint32_t color) {
+void GlobalPlanner::visualize_global_plan(amrl_msgs::msg::VisualizationMsg & viz_msg, uint32_t color) {
     Eigen::Vector2f prev(global_path_.front().first, global_path_.front().second);
     for (const auto& vertex : global_path_) {
         Eigen::Vector2f p(vertex.first, vertex.second);
@@ -398,7 +409,7 @@ void GlobalPlanner::visualize_global_plan(amrl_msgs::VisualizationMsg & viz_msg,
 
 
 // visualize our voronoi diagram on the map
-void GlobalPlanner::visualize_voronoi(amrl_msgs::VisualizationMsg & viz_msg, uint32_t color) {
+void GlobalPlanner::visualize_voronoi(amrl_msgs::msg::VisualizationMsg & viz_msg, uint32_t color) {
     // draw the line segments on the viz_msg
     // for (const auto& edge : vd_.edges()) {
     //     if (edge.is_finite() && edge.is_linear()) {

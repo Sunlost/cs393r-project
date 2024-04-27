@@ -33,7 +33,6 @@
 #include "visualization/visualization.h"
 #include "path_options.h"
 #include "latency_compensation.h"
-#include "global_planner.h" 
 #include <signal.h>
 
 #include <irobot_create_msgs/action/drive_distance.hpp>
@@ -41,6 +40,7 @@
 #include <irobot_create_msgs/action/rotate_angle.hpp>
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
+#include "global_planner.h" 
 
 using Eigen::Vector2f;
 using amrl_msgs::msg::AckermannCurvatureDriveMsg;
@@ -81,6 +81,7 @@ Navigation::Navigation(const string &map_name, const std::shared_ptr<rclcpp::Nod
     global_planner_(),
     goal_established_(false)
   {
+  cout << "navigation constructor" << endl;
   map_.Load(GetMapFileFromName(map_name));
   LOG(INFO) << "Loaded map file: " << GetMapFileFromName(map_name);
   viz_pub_ = node->create_publisher<VisualizationMsg>("visualization", 1);
@@ -101,9 +102,7 @@ Navigation::Navigation(const string &map_name, const std::shared_ptr<rclcpp::Nod
 }
 
 void Navigation::SetNavGoal(const Vector2f& loc, float angle) {
-  // print
-  cout << "Setting new goal" << endl;
-
+  cout << "set nav goal" << endl;
   // time to voronoi
   nav_goal_loc_ = loc;
   nav_goal_angle_ = angle;
@@ -120,6 +119,7 @@ void Navigation::SetNavGoal(const Vector2f& loc, float angle) {
 
 bool Navigation::StartDriveDistanceAction(const double &distance, const double &max_translation_speed,
                                           const std::chrono::duration<int64_t, std::milli> &wait_for_server_timeout) {
+  cout << "start drive distance action" << endl;
   if (anyGoalsInProgress()) {
       LOG(ERROR)
           << "Tried to initiate new action when one is already in progress. Make sure that one is not executing and reset variables appropriately";
@@ -159,6 +159,7 @@ bool Navigation::StartDriveDistanceAction(const double &distance, const double &
 
 bool Navigation::StartDriveArcAction(const int &translate_direction, const double &arc_radius, const double &arc_angle, const double &max_translation_speed,
                          const std::chrono::duration<int64_t, std::milli> &wait_for_server_timeout) {
+  cout << "start drive arc action" << endl;
   if (anyGoalsInProgress()) {
       LOG(ERROR)
           << "Tried to initiate new action when one is already in progress. Make sure that one is not executing and reset variables appropriately";
@@ -200,6 +201,7 @@ bool Navigation::StartDriveArcAction(const int &translate_direction, const doubl
 
 bool Navigation::StartRotateAngleAction(const double &angle_rad, const double &max_rotation_speed,
                                         const std::chrono::duration<int64_t, std::milli> &wait_for_server_timeout) {
+  cout << "start rotate angle action" << endl;
   if (anyGoalsInProgress()) {
       LOG(ERROR)
           << "Tried to initiate new action when one is already in progress. Make sure that one is not executing and reset variables appropriately";
@@ -235,6 +237,7 @@ bool Navigation::StartRotateAngleAction(const double &angle_rad, const double &m
 }
 
 void Navigation::UpdateLocation(const Eigen::Vector2f &loc, float angle) {
+  cout << "update location" << endl;
   localization_initialized_ = true;
   robot_loc_ = loc;
   robot_angle_ = angle;
@@ -244,6 +247,7 @@ void Navigation::UpdateOdometry(const Vector2f &loc,
                                 float angle,
                                 const Vector2f &vel,
                                 float ang_vel) {
+  cout << "update odometry" << endl;
   robot_omega_ = ang_vel;
   robot_vel_ = vel;
   if (!odom_initialized_) {
@@ -254,8 +258,9 @@ void Navigation::UpdateOdometry(const Vector2f &loc,
     odom_angle_ = angle;
     return;
   }
-  latency_compensation_->recordObservation(loc[0], loc[1], angle, ros::Time::now().toSec());
-  Observation predictedState = latency_compensation_->getPredictedState();
+  double node_time = node_->get_clock()->now().seconds();
+  latency_compensation_->recordObservation(loc[0], loc[1], angle, node_time);
+  Observation predictedState = latency_compensation_->getPredictedState(node_time);
   odom_loc_ = {predictedState.x, predictedState.y};
   odom_angle_ = predictedState.theta;
   robot_vel_ = {predictedState.vx, predictedState.vy};
@@ -266,15 +271,19 @@ void Navigation::UpdateOdometry(const Vector2f &loc,
 
 void Navigation::ObservePointCloud(const vector<Vector2f> &cloud,
                                    double time) {
+  // todo check on what time is for?
+  cout << "observe point cloud" << endl;
   point_cloud_ = cloud;                                     
 }
 
 void Navigation::SetLatencyCompensation(LatencyCompensation* latency_compensation) {
+  cout << "set latency compensation" << endl;
   latency_compensation_ = latency_compensation;
 }
 
 // Convert (velocity, curvature) to (x_dot, y_dot, theta_dot)
 Control Navigation::GetCartesianControl(float velocity, float curvature, double time) {
+  cout << "get cartesian control" << endl;
   float x_dot = velocity * cos(curvature);
   float y_dot = velocity * sin(curvature);
   float theta_dot = velocity * curvature;
@@ -304,21 +313,21 @@ void Navigation::SimpleController(Eigen::Vector2f & local_carrot) {
 }
 
 void Navigation::Run() {
-  // print here
-  // cout << "Running" << endl;
+  cout << "run" << endl;
   // This function gets called 20 times a second to form the control loop.
 
   // Clear previous visualizations.
   visualization::ClearVisualizationMsg(local_viz_msg_);
   visualization::ClearVisualizationMsg(global_viz_msg_);
 
+  cout << "odom initialized?: " << odom_initialized_ << "goal established?: " << goal_established_ << endl;
   // If odometry has not been initialized or goal has not been set, we can't do anything.
   if (!odom_initialized_ || !goal_established_) return;
 
   // robot is within .5m of goal, consider it reached
   if ((robot_loc_ - nav_goal_loc_).squaredNorm() < 0.25){
-    drive_msg_.velocity = 0;
-    cout << "Goal Reached" << endl;
+    // todo: set twist stuff here - left action
+    // drive_msg_.velocity = 0;
     return;
   }
 
@@ -335,7 +344,7 @@ void Navigation::Run() {
   // has elapsed since your request
 
   // Make sure to reset the status to NONE once you've processed the completion of an action request
-  float current_speed = robot_vel_.norm();
+  // float current_speed = robot_vel_.norm();
   // cout << current_speed << endl;
   // distance_traveled_ += current_speed * robot_config_.dt;
   // float dist_to_go = (10 - distance_traveled_); // hard code to make it go 10 forward
@@ -352,7 +361,8 @@ void Navigation::Run() {
     carrot_found = global_planner_.get_carrot(robot_loc_, robot_angle_, &carrot_loc, global_viz_msg_);
     // plan must be unreachable. stop moving
     if(!carrot_found) {
-      drive_msg_.velocity = 0;
+      // todo twist thing
+      // drive_msg_.velocity = 0;
       goal_established_ = false;
       // print no carrot found
       cout << "No carrot found" << endl;
@@ -376,12 +386,15 @@ void Navigation::Run() {
   // print the carrot
   // cout << "2 "<< carrot_loc.x() << " " << carrot_loc.y() << endl;
 
-  // vector<PathOption> path_options = samplePathOptions(31, point_cloud_, robot_config_, carrot_loc);
-  // int best_path = selectPath(path_options, carrot_loc);
+  vector<PathOption> path_options = samplePathOptions(31, point_cloud_, robot_config_, carrot_loc);
+  int best_path = selectPath(path_options, carrot_loc);
+
+  // todo: set twist, set twist.linear.x to speed twist.angular.z is curvature * speed 
   // drive_msg_.curvature = path_options[best_path].curvature;
   // drive_msg_.velocity = run1DTimeOptimalControl(path_options[best_path].free_path_length, current_speed, robot_config_);
-	SimpleController(carrot_loc);
-
+	
+  // cout << drive_msg_.curvature << " " << drive_msg_.velocity << endl;
+  SimpleController(carrot_loc);
   // visualization here
   visualization::DrawRectangle(Vector2f(robot_config_.length/2 - robot_config_.base_link_offset, 0),
       robot_config_.length, robot_config_.width, 0, 0x00FF00, local_viz_msg_);
@@ -413,8 +426,10 @@ void Navigation::Run() {
   viz_pub_->publish(local_viz_msg_);
   viz_pub_->publish(global_viz_msg_);
   // Record control for latency compensation
-  Control control = GetCartesianControl(drive_msg_.velocity, drive_msg_.curvature, drive_msg_.header.stamp.toSec());
-  latency_compensation_->recordControl(control);
+  // todo set twist stuff
+  // todo fix control, use ros_helpers::rosHeaderStampToSeconds(msg.header)
+  // Control control = GetCartesianControl(drive_msg_.velocity, drive_msg_.curvature, drive_msg_.header.stamp.toSec());
+  // latency_compensation_->recordControl(control);
 
   // Hack because ssh -X is slow
   // if (latency_compensation_->getControlQueue().size() == 100) {
