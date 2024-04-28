@@ -90,6 +90,9 @@ Navigation::Navigation(const string& map_name, ros::NodeHandle* n) :
 }
 
 void Navigation::SetNavGoal(const Vector2f& loc, float angle) {
+  // print
+  cout << "Setting new goal" << endl;
+
   // time to voronoi
   nav_goal_loc_ = loc;
   nav_goal_angle_ = angle;
@@ -152,7 +155,26 @@ Control Navigation::GetCartesianControl(float velocity, float curvature, double 
   return {x_dot, y_dot, theta_dot, time};
 }
 
+// sets the drive msg
+void Navigation::SimpleController(Eigen::Vector2f & local_carrot) {
+  float angle_to_carrot = atan2(local_carrot.y(), local_carrot.x());
+  float angle_diff = math_util::AngleDiff(angle_to_carrot, robot_angle_);
+  // float distance_to_carrot = local_carrot.norm();
+
+  // if not facing carrot, rotate to face carrot
+  // otherwise, drive straight to the carrot
+  if (abs(angle_diff) > 0.1) {
+    drive_msg_.velocity = 1;
+    drive_msg_.curvature = 1000;
+  } else {
+    drive_msg_.velocity = 1;
+    drive_msg_.curvature = 0;
+  }
+}
+
 void Navigation::Run() {
+  // print here
+  // cout << "Running" << endl;
   // This function gets called 20 times a second to form the control loop.
 
   // Clear previous visualizations.
@@ -177,7 +199,7 @@ void Navigation::Run() {
   // Eventually, you will have to set the control values to issue drive commands:
   // drive_msg_.curvature = ...;
   // drive_msg_.velocity = ...;
-  float current_speed = robot_vel_.norm();
+  // float current_speed = robot_vel_.norm();
   // cout << current_speed << endl;
   // distance_traveled_ += current_speed * robot_config_.dt;
   // float dist_to_go = (10 - distance_traveled_); // hard code to make it go 10 forward
@@ -218,30 +240,23 @@ void Navigation::Run() {
   // print the carrot
   // cout << "2 "<< carrot_loc.x() << " " << carrot_loc.y() << endl;
 
-  vector<PathOption> path_options = samplePathOptions(31, point_cloud_, robot_config_, carrot_loc);
-  int best_path = selectPath(path_options, carrot_loc);
-
-  // cout << "best path "<< best_path << endl;
-
-
-  drive_msg_.curvature = path_options[best_path].curvature;
-  drive_msg_.velocity = run1DTimeOptimalControl(path_options[best_path].free_path_length, current_speed, robot_config_);
-	
-  // cout << drive_msg_.curvature << " " << drive_msg_.velocity << endl;
-  // print free path length and drive_msg_.velocity
-  cout << path_options[best_path].free_path_length << " " << drive_msg_.velocity << endl;
+  // vector<PathOption> path_options = samplePathOptions(31, point_cloud_, robot_config_, carrot_loc);
+  // int best_path = selectPath(path_options, carrot_loc);
+  // drive_msg_.curvature = path_options[best_path].curvature;
+  // drive_msg_.velocity = run1DTimeOptimalControl(path_options[best_path].free_path_length, current_speed, robot_config_);
+	SimpleController(carrot_loc);
 
   // visualization here
   visualization::DrawRectangle(Vector2f(robot_config_.length/2 - robot_config_.base_link_offset, 0),
       robot_config_.length, robot_config_.width, 0, 0x00FF00, local_viz_msg_);
   // Draw all path options in blue
-  for (unsigned int i = 0; i < path_options.size(); i++) {
-      visualization::DrawPathOption(path_options[i].curvature, path_options[i].free_path_length, 0, 0x0000FF, false, local_viz_msg_);
-      visualization::DrawCross(path_options[i].closest_point, .2, 0x0000FF, local_viz_msg_);
-  }
+  // for (unsigned int i = 0; i < path_options.size(); i++) {
+  //     visualization::DrawPathOption(path_options[i].curvature, path_options[i].free_path_length, 0, 0x0000FF, false, local_viz_msg_);
+  //     visualization::DrawCross(path_options[i].closest_point, .2, 0x0000FF, local_viz_msg_);
+  // }
   // Draw the best path in red
-  visualization::DrawPathOption(path_options[best_path].curvature, path_options[best_path].free_path_length, path_options[best_path].clearance, 0xFF0000, true, local_viz_msg_);
-    visualization::DrawCross(path_options[best_path].closest_point, 1, 0x00ff00, local_viz_msg_);
+  // visualization::DrawPathOption(path_options[best_path].curvature, path_options[best_path].free_path_length, path_options[best_path].clearance, 0xFF0000, true, local_viz_msg_);
+  // visualization::DrawCross(path_options[best_path].closest_point, 1, 0x00ff00, local_viz_msg_);
 // Find the closest point in the point cloud
 
   // visualize goal location

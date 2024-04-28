@@ -103,6 +103,8 @@ class Navigation {
 
   Control GetCartesianControl(float velocity, float curvature, double time);
 
+  void SimpleController(Eigen::Vector2f & local_carrot);
+
  private:
 
   // Whether odometry has been initialized.
