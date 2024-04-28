@@ -298,14 +298,18 @@ Control Navigation::GetCartesianControl(float velocity, float curvature, double 
 // sets the drive msg
 void Navigation::SimpleController(Eigen::Vector2f & local_carrot) {
   float angle_to_carrot = atan2(local_carrot.y(), local_carrot.x());
-  float angle_diff = math_util::AngleDiff(angle_to_carrot, robot_angle_);
+  // float angle_diff = math_util::AngleDiff(angle_to_carrot, robot_angle_);
   // float distance_to_carrot = local_carrot.norm();
 
   // if not facing carrot, rotate to face carrot
   // otherwise, drive straight to the carrot
-  if (abs(angle_diff) > 0.1) {
-    drive_msg_.velocity = 1;
-    drive_msg_.curvature = 1000;
+  if (abs(angle_to_carrot) > .1) {
+    if (angle_to_carrot > 0) {
+      drive_msg_.curvature = 10;
+    } else {
+      drive_msg_.curvature = -10;
+    }
+    drive_msg_.velocity = .1;
   } else {
     drive_msg_.velocity = run1DTimeOptimalControl(local_carrot.norm(), robot_vel_.norm(), robot_config_);
     drive_msg_.curvature = 0;
