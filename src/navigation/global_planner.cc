@@ -366,7 +366,7 @@ bool GlobalPlanner::get_carrot(Eigen::Vector2f& curr_loc, float curr_angle, Eige
         for (auto rit = global_path_.rbegin(); rit != global_path_.rend(); ++rit) {
             carrot_loc->x() = rit->first;
             carrot_loc->y() = rit->second;
-            if ((curr_loc - *carrot_loc).norm() < 5) { // can change min dist here
+            if ((curr_loc - *carrot_loc).norm() < 1) { // can change min dist here
                 break;
             }
         }
