@@ -167,7 +167,7 @@ void Navigation::SimpleController(Eigen::Vector2f & local_carrot) {
     drive_msg_.velocity = 1;
     drive_msg_.curvature = 1000;
   } else {
-    drive_msg_.velocity = 1;
+    drive_msg_.velocity = run1DTimeOptimalControl(local_carrot.norm(), robot_vel_.norm(), robot_config_);
     drive_msg_.curvature = 0;
   }
 }
