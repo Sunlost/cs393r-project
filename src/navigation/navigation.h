@@ -131,6 +131,8 @@ class Navigation {
 
   Control GetCartesianControl(float velocity, float curvature, double time);
 
+  void SimpleController(Eigen::Vector2f & local_carrot);
+
 private:
   std::shared_ptr<rclcpp::Node> node_;
   rclcpp_action::Client<irobot_create_msgs::action::DriveDistance>::SharedPtr drive_distance_client_;
