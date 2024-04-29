@@ -40,6 +40,7 @@ struct PathOption {
   float curvature = 0;
   float clearance = 10;
   float free_path_length = 100;
+  float dist_to_closest_point = 100;
   Eigen::Vector2f obstruction = Eigen::Vector2f::Zero();
   Eigen::Vector2f closest_point = Eigen::Vector2f::Zero();
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
@@ -101,6 +102,8 @@ class Navigation {
   void SetLatencyCompensation(LatencyCompensation* latency_compensation);
 
   Control GetCartesianControl(float velocity, float curvature, double time);
+
+  void SimpleController(Eigen::Vector2f & local_carrot);
 
  private:
 

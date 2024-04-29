@@ -54,14 +54,25 @@ float projected_dist(const Eigen::Vector2f& point, const line2f& line) {
 
 
 // returns smallest gap size between two lines
-float get_gap_size(const line2f &c1, const line2f &c2) {
-    // get the minimum distance between the two lines
-    float d1 = projected_dist(c1.p0, c2);
-    float d2 = projected_dist(c1.p1, c2);
-    float d3 = projected_dist(c2.p0, c1);
-    float d4 = projected_dist(c2.p1, c1);
-    float min_dist = std::min(std::min(d1, d2), std::min(d3, d4));
-    return min_dist;
+// float get_gap_size(const line2f &c1, const line2f &c2) {
+//     // get the minimum distance between the two lines
+//     float d1 = projected_dist(c1.p0, c2);
+//     float d2 = projected_dist(c1.p1, c2);
+//     float d3 = projected_dist(c2.p0, c1);
+//     float d4 = projected_dist(c2.p1, c1);
+//     float min_dist = std::min(std::min(d1, d2), std::min(d3, d4));
+//     return min_dist;
+// }
+
+float get_gap_size(const Eigen::Vector2f &c1, const Eigen::Vector2f &c2) {
+    // // get the minimum distance between the two lines
+    // float d1 = projected_dist(c1.p0, c2);
+    // float d2 = projected_dist(c1.p1, c2);
+    // float d3 = projected_dist(c2.p0, c1);
+    // float d4 = projected_dist(c2.p1, c1);
+    // float min_dist = std::min(std::min(d1, d2), std::min(d3, d4));
+    // return min_dist;
+    return (c1 - c2).norm();
 }
 
 
@@ -114,7 +125,27 @@ void GlobalPlanner::set_start(float start_x, float start_y) {
     start_ = Eigen::Vector2f(start_x, start_y);
 }
 
+// Function to perform linear interpolation between two Eigen Vector2f endpoints
+vector<Eigen::Vector2f> interpolate_points(const Eigen::Vector2f& p1, const Eigen::Vector2f& p2, float spacing_distance) {
+    vector<Eigen::Vector2f> interpolated_points;
 
+    // Calculate the total distance between p1 and p2
+    float total_distance = (p2 - p1).norm();
+
+    // Calculate the number of segments based on spacing distance
+    int num_segments = std::max(1, static_cast<int>(total_distance / spacing_distance));
+
+    // Calculate the increment for parameter t
+    float delta_t = 1.0f / num_segments;
+
+    for (int i = 1; i <= num_segments; ++i) {
+        float t = i * delta_t;
+        Eigen::Vector2f interpolated_point = p1 + t * (p2 - p1);
+        interpolated_points.push_back(interpolated_point);
+    }
+
+    return interpolated_points;
+}
 
 void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
     vb_.clear();
@@ -124,23 +155,23 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
 
     // insert the goal point into the voronoi builder
     vb_.insert_point(goal_coords_.first, goal_coords_.second);
-    global_map_.emplace_back(line2f(goal_.x(), goal_.y(), goal_.x(), goal_.y()));
+    global_map_.push_back(goal_);
 
     // insert start point into the voronoi builder
     vb_.insert_point(start_.x() * SCALE_FACTOR, start_.y() * SCALE_FACTOR);
-    global_map_.emplace_back(line2f(start_.x(), start_.y(), start_.x(), start_.y()));
-
-    global_map_.insert(global_map_.end(), map.lines.begin(), map.lines.end());
+    global_map_.push_back(start_);
 
     // insert map geometry into the voronoi builder
     for (size_t i = 0; i < map.lines.size(); i++) {
         const line2f map_line = map.lines[i];
-        vb_.insert_segment(
-            map_line.p0.x() * SCALE_FACTOR,
-            map_line.p0.y() * SCALE_FACTOR,
-            map_line.p1.x() * SCALE_FACTOR,
-            map_line.p1.y() * SCALE_FACTOR
-        );
+        vector<Eigen::Vector2f> vec = interpolate_points(map_line.p0, map_line.p1, .2);
+        for (const auto & p : vec) {
+            vb_.insert_point(
+                p.x() * SCALE_FACTOR,
+                p.y() * SCALE_FACTOR
+            );
+            global_map_.push_back(p);
+        }
     }
 
     // construct the voronoi diagram
@@ -171,8 +202,8 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
                 
                 // cells are built around a source (obstacle). source_index is 
                 // the order the obstacles were added to the map
-                line2f l1 = global_map_[edge->cell()->source_index()];
-                line2f l2 = global_map_[edge->twin()->cell()->source_index()];
+                Eigen::Vector2f l1 = global_map_[edge->cell()->source_index()];
+                Eigen::Vector2f l2 = global_map_[edge->twin()->cell()->source_index()];
                 if (get_gap_size(l1, l2) > 0.5) {
                     edge_map[this_vertex].push_back(destination_vertex);
                 }
@@ -321,68 +352,28 @@ bool GlobalPlanner::get_carrot(Eigen::Vector2f& curr_loc, float curr_angle, Eige
         return false;
     }
 
-    // return carrot if robot is in circumcircle
-    // find farthest point (btwn starting location and start_cell_) and use that as radius
-    // farthest point will be the vertices of start_cell_
-    // const voronoi_diagram<double>::edge_type* edge = start_cell_->incident_edge();
-    // double farthest_point = 0;
-    // do {
-    //     if (edge->is_primary() && edge->is_finite()) {
-    //         farthest_point = std::max(farthest_point, pow(start_.x() - edge->vertex1()->x() / SCALE_FACTOR, 2) + pow(start_.y() - edge->vertex1()->y() / SCALE_FACTOR, 2));
-    //     }
-    //     edge = edge->next();
-    // } while(edge != start_cell_->incident_edge());
-    
-    // actually, find two farthest vertices from each other
-    // being so for real this was not worth spending time on
-    const voronoi_diagram<double>::edge_type* edge_outer = start_cell_->incident_edge();
-    const voronoi_diagram<double>::edge_type* edge_inner = start_cell_->incident_edge();
-
-    double farthest_dist = 0;
-    pair<Eigen::Vector2f, Eigen::Vector2f> furthest_points;
-    do {
-        const voronoi_diagram<double>::vertex_type* point1 = edge_outer->vertex1();
-        if (edge_outer->is_primary() && edge_outer->is_finite()) {
-            do {
-                if (edge_inner->is_primary() && edge_inner->is_finite()) {
-                    const voronoi_diagram<double>::vertex_type* point2 = edge_inner->vertex1();;
-                    double dist = pow((point1->x() - point2->x()) / SCALE_FACTOR, 2) + pow((point1->y() - point2->y()) / SCALE_FACTOR, 2);
-                    if (dist > farthest_dist) {
-                        farthest_dist = dist;
-                        furthest_points.first = Eigen::Vector2f(point1->x() / SCALE_FACTOR, point1->y() / SCALE_FACTOR);
-                        furthest_points.second = Eigen::Vector2f(point2->x() / SCALE_FACTOR, point2->y() / SCALE_FACTOR);
-                    }
-                }
-                edge_inner = edge_inner->next();
-            } while(edge_inner != start_cell_->incident_edge());
-        }
-        edge_outer = edge_outer->next();
-    } while(edge_outer != start_cell_->incident_edge());
-
-    Eigen::Vector2f circle_center((furthest_points.first.x() + furthest_points.second.x()) / 2, (furthest_points.first.y() + furthest_points.second.y()) / 2);
-    // uncomment for viz
-    visualization::DrawArc(circle_center, sqrt(farthest_dist) / 2, 0, 360, 0x2398DB, viz_msg);
-    visualization::DrawCross(furthest_points.first, 1, 0x2398DB, viz_msg);
-    visualization::DrawCross(furthest_points.second, 1, 0x2398DB, viz_msg);
-
-    // check if robot is in the radius of this circle
-    // circle radius is sqrt(farthest_dist) / 2
-    // I want to keep things squared so multiply by 4
-    if (4*(circle_center - curr_loc).squaredNorm() > farthest_dist) {
-        return false;
-    }
-
     if (global_path_.size() == 2) { // robot can go directly to goal, so set goal as carrot.
         carrot_loc->x() = global_path_.back().first;
         carrot_loc->y() = global_path_.back().second;
         return true;
     }
     else {
-        carrot_loc->x() = global_path_.front().first;
-        carrot_loc->y() = global_path_.front().second;
+
+        // carrot_loc->x() = global_path_.front().first;
+        // carrot_loc->y() = global_path_.front().second;
+
+         // Iterate backwards using reverse iterators
+        for (auto rit = global_path_.rbegin(); rit != global_path_.rend(); ++rit) {
+            carrot_loc->x() = rit->first;
+            carrot_loc->y() = rit->second;
+            if ((curr_loc - *carrot_loc).norm() < 5) { // can change min dist here
+                break;
+            }
+        }
     }
+
     // print the carrot
-    std::cout << "Carrot: " << carrot_loc->x() << " " << carrot_loc->y() << std::endl;
+    // std::cout << "Carrot: " << carrot_loc->x() << " " << carrot_loc->y() << std::endl;
     return true;
 }
 
