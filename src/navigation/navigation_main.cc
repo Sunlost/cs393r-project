@@ -72,7 +72,7 @@ DEFINE_string(loc_topic, "localization", "Name of ROS topic for localization");
 DEFINE_string(init_topic,
               "initialpose",
               "Name of ROS topic for initialization");
-DEFINE_string(map, "GDC1", "Name of vector map file");
+DEFINE_string(map, "CDL_Ground", "Name of vector map file");
 DEFINE_string(robot_config, "config/navigation.lua", "Robot config file");
 
 
@@ -82,13 +82,12 @@ Navigation* navigation_ = nullptr;
 NavigationParams* robot_config_ = nullptr; // use default values for now, but read from config later
 
 void LaserCallback(const sensor_msgs::msg::LaserScan &msg) {
-    cout << "laser callback" << endl;
     if (FLAGS_v > 0) {
         printf("Laser t=%f, dt=%f\n",
                ros_helpers::rosHeaderStampToSeconds(msg.header),
                GetWallTime() - ros_helpers::rosHeaderStampToSeconds(msg.header));
     }
-    LOG(INFO) << "REceived scan";
+    // LOG(INFO) << "REceived scan";
     // Location of the laser on the robot. Assumes the laser is forward-facing.
     const Vector2f kLaserLoc(0.2, 0);
     static vector<Vector2f> point_cloud_;
@@ -115,7 +114,6 @@ void LaserCallback(const sensor_msgs::msg::LaserScan &msg) {
 }
 
 void OdometryCallback(const nav_msgs::msg::Odometry &msg) {
-    cout << "odom callback" << endl;
     if (FLAGS_v > 0) {
         printf("Odometry t=%f\n", ros_helpers::rosHeaderStampToSeconds(msg.header));
     }
@@ -127,7 +125,6 @@ void OdometryCallback(const nav_msgs::msg::Odometry &msg) {
 }
 
 void GoToCallback(const geometry_msgs::msg::PoseStamped &msg) {
-    cout << "go to callback" << endl;
     const Vector2f loc(msg.pose.position.x, msg.pose.position.y);
     const float angle =
             2.0 * atan2(msg.pose.orientation.z, msg.pose.orientation.w);
@@ -145,7 +142,6 @@ void SignalHandler(int) {
 }
 
 void LocalizationCallback(const amrl_msgs::msg::Localization2DMsg msg) {
-    cout << "localization callback" << endl;
     if (FLAGS_v > 0) {
         printf("Localization t=%f\n", GetWallTime());
     }
@@ -184,7 +180,6 @@ void StringCallback(const std_msgs::msg::String &msg) {
     RateLoop loop(20.0);
     while (run_ && rclcpp::ok()) {
         executor.spin_once();
-        LOG(INFO) << "Spinning";
         navigation_->Run();
         loop.Sleep();
     }

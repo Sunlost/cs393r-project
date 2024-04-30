@@ -45,11 +45,9 @@
 #include "global_planner.h" 
 
 using Eigen::Vector2f;
-using amrl_msgs::msg::AckermannCurvatureDriveMsg;
 using amrl_msgs::msg::VisualizationMsg;
 using std::string;
 using std::vector;
-
 using namespace math_util;
 using namespace ros_helpers;
 
@@ -58,6 +56,8 @@ rclcpp::Publisher<VisualizationMsg>::SharedPtr viz_pub_;
 rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr twist_pub_;
 VisualizationMsg local_viz_msg_;
 VisualizationMsg global_viz_msg_;
+geometry_msgs::msg::Twist twist_msg_;
+
 // Epsilon value for handling limited numerical precision.
 const float kEpsilon = 1e-5;
 } //namespace
@@ -241,7 +241,7 @@ bool Navigation::StartRotateAngleAction(const double &angle_rad, const double &m
 }
 
 void Navigation::UpdateLocation(const Eigen::Vector2f &loc, float angle) {
-  cout << "update location" << endl;
+  // cout << "update location" << endl;
   localization_initialized_ = true;
   robot_loc_ = loc;
   robot_angle_ = angle;
@@ -251,7 +251,7 @@ void Navigation::UpdateOdometry(const Vector2f &loc,
                                 float angle,
                                 const Vector2f &vel,
                                 float ang_vel) {
-  cout << "update odometry" << endl;
+  // cout << "update odometry" << endl;
   robot_omega_ = ang_vel;
   robot_vel_ = vel;
   if (!odom_initialized_) {
@@ -262,8 +262,8 @@ void Navigation::UpdateOdometry(const Vector2f &loc,
     odom_angle_ = angle;
     return;
   }
+  latency_compensation_->recordObservation(loc[0], loc[1], angle, node_->get_clock()->now().seconds());
   double node_time = node_->get_clock()->now().seconds();
-  latency_compensation_->recordObservation(loc[0], loc[1], angle, node_time);
   Observation predictedState = latency_compensation_->getPredictedState(node_time);
   odom_loc_ = {predictedState.x, predictedState.y};
   odom_angle_ = predictedState.theta;
@@ -276,18 +276,18 @@ void Navigation::UpdateOdometry(const Vector2f &loc,
 void Navigation::ObservePointCloud(const vector<Vector2f> &cloud,
                                    double time) {
   // todo check on what time is for?
-  cout << "observe point cloud" << endl;
+  // cout << "observe point cloud" << endl;
   point_cloud_ = cloud;                                     
 }
 
 void Navigation::SetLatencyCompensation(LatencyCompensation* latency_compensation) {
-  cout << "set latency compensation" << endl;
+  // cout << "set latency compensation" << endl;
   latency_compensation_ = latency_compensation;
 }
 
 // Convert (velocity, curvature) to (x_dot, y_dot, theta_dot)
 Control Navigation::GetCartesianControl(float velocity, float curvature, double time) {
-  cout << "get cartesian control" << endl;
+  // cout << "get cartesian control" << endl;
   float x_dot = velocity * cos(curvature);
   float y_dot = velocity * sin(curvature);
   float theta_dot = velocity * curvature;
@@ -304,34 +304,33 @@ void Navigation::SimpleController(Eigen::Vector2f & local_carrot) {
   // if not facing carrot, rotate to face carrot
   // otherwise, drive straight to the carrot
   if (abs(angle_to_carrot) > .1) {
-    if (angle_to_carrot > 0) {
-      drive_msg_.curvature = 10;
-    } else {
-      drive_msg_.curvature = -10;
-    }
-    drive_msg_.velocity = .1;
+    // angular should be v * curvature but I made it just curvature?? so it is 1/10th as much turning
+    twist_msg_.angular.z = angle_to_carrot;
+    twist_msg_.linear.x = .1;
   } else {
-    drive_msg_.velocity = run1DTimeOptimalControl(local_carrot.norm(), robot_vel_.norm(), robot_config_);
-    drive_msg_.curvature = 0;
+    // linear should be just v but I multiply by 10 bc it's slow otherwise
+    twist_msg_.angular.z = 0;
+    // sometimes 1dtoc returns crazy values. I am unable to replicate that so let's just hope it doesn't happen again
+    twist_msg_.linear.x = run1DTimeOptimalControl(local_carrot.norm(), robot_vel_.norm(), robot_config_) * 10;
+
   }
 }
 
 void Navigation::Run() {
-  cout << "run" << endl;
+  // cout << "run" << endl;
   // This function gets called 20 times a second to form the control loop.
 
   // Clear previous visualizations.
   visualization::ClearVisualizationMsg(local_viz_msg_);
   visualization::ClearVisualizationMsg(global_viz_msg_);
 
-  cout << "odom initialized?: " << odom_initialized_ << "goal established?: " << goal_established_ << endl;
+  // cout << "odom initialized?: " << odom_initialized_ << "goal established?: " << goal_established_ << endl;
   // If odometry has not been initialized or goal has not been set, we can't do anything.
   if (!odom_initialized_ || !goal_established_) return;
 
   // robot is within .5m of goal, consider it reached
   if ((robot_loc_ - nav_goal_loc_).squaredNorm() < 0.25){
-    // todo: set twist stuff here - left action
-    // drive_msg_.velocity = 0;
+    twist_msg_.linear.x = 0;
     return;
   }
 
@@ -365,16 +364,14 @@ void Navigation::Run() {
     carrot_found = global_planner_.get_carrot(robot_loc_, robot_angle_, &carrot_loc, global_viz_msg_);
     // plan must be unreachable. stop moving
     if(!carrot_found) {
-      // todo twist thing
-      // drive_msg_.velocity = 0;
+      twist_msg_.linear.x = 0;
       goal_established_ = false;
       // print no carrot found
       cout << "No carrot found" << endl;
       return;
     }
   // }
-  visualization::DrawCross(carrot_loc, 1, 0xFF0000, global_viz_msg_);
-
+  visualization::DrawCross(carrot_loc, 1, 0x23AB3e, global_viz_msg_);
 
   // cout << "0 "<<carrot_loc.x() << " " << carrot_loc.y() << endl;
   
@@ -398,8 +395,9 @@ void Navigation::Run() {
 	SimpleController(carrot_loc);
 
   // visualization here
-  visualization::DrawRectangle(Vector2f(robot_config_.length/2 - robot_config_.base_link_offset, 0),
-      robot_config_.length, robot_config_.width, 0, 0x00FF00, local_viz_msg_);
+  // visualization::DrawRectangle(Vector2f(robot_config_.length/2 - robot_config_.base_link_offset, 0),
+  //     robot_config_.length, robot_config_.width, 0, 0x00FF00, local_viz_msg_);
+    visualization::DrawArc(Vector2f(0,0), .17, 0, 360, 0x00FF00, local_viz_msg_);
   // Draw all path options in blue
   // for (unsigned int i = 0; i < path_options.size(); i++) {
   //     visualization::DrawPathOption(path_options[i].curvature, path_options[i].free_path_length, 0, 0x0000FF, false, local_viz_msg_);
@@ -418,24 +416,20 @@ void Navigation::Run() {
   // for debugging
   global_planner_.visualize_voronoi(global_viz_msg_);
   global_planner_.visualize_global_plan(global_viz_msg_);
-  
-    
-
-  geometry_msgs::msg::Twist twist;
-  twist.linear.x = 1;
-  twist_pub_->publish(twist);
 
   // Add timestamps to all messages.
   local_viz_msg_.header.stamp = node_->get_clock()->now();
   global_viz_msg_.header.stamp = node_->get_clock()->now();
   // Publish messages.
-  viz_pub_->publish(local_viz_msg_);
   viz_pub_->publish(global_viz_msg_);
+  viz_pub_->publish(local_viz_msg_);
+  twist_pub_->publish(twist_msg_);
+
   // Record control for latency compensation
   // todo set twist stuff
   // todo fix control, use ros_helpers::rosHeaderStampToSeconds(msg.header)
-  // Control control = GetCartesianControl(drive_msg_.velocity, drive_msg_.curvature, drive_msg_.header.stamp.toSec());
-  // latency_compensation_->recordControl(control);
+  Control control = GetCartesianControl(twist_msg_.linear.x, twist_msg_.angular.z, node_->get_clock()->now().seconds());
+  latency_compensation_->recordControl(control);
 
   // Hack because ssh -X is slow
   // if (latency_compensation_->getControlQueue().size() == 100) {

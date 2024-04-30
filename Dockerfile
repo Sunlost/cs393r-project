@@ -20,7 +20,7 @@ RUN rosdep update
 # clone deps
 RUN git clone https://github.com/ut-amrl/amrl_maps.git && \
     git clone https://github.com/ut-amrl/amrl_msgs.git && \
-    git clone https://github.com/ut-amrl/ut_turtlebots.git --recurse-submodules
+    git clone --branch addSim https://github.com/ut-amrl/ut_turtlebots.git --recurse-submodules
 
 # set up .bashrc
 

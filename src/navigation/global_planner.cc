@@ -6,23 +6,12 @@
 
 // other project file headers
 #include "vector_map/vector_map.h"
-#include "amrl_msgs/msg/localization2_d_msg.hpp"
-#include "gflags/gflags.h"
-#include "geometry_msgs/msg/pose2_d.hpp"
-#include "geometry_msgs/msg/pose_array.hpp"
-#include "geometry_msgs/msg/pose_stamped.hpp"
-#include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
-#include "sensor_msgs/msg/laser_scan.hpp"
-#include "visualization_msgs/msg/marker.hpp"
-#include "visualization_msgs/msg/marker_array.hpp"
-#include "amrl_msgs/msg/visualization_msg.hpp"
-
-#include "nav_msgs/msg/odometry.hpp"
 #include "simple_queue.h"
 #include "global_planner.h"
 
 // visualization header
 #include "visualization/visualization.h"
+#include "amrl_msgs/msg/visualization_msg.hpp"
 
 // voronoi headers (from boost) 
 #include "voronoi/voronoi_builder.hpp"
@@ -38,6 +27,7 @@ using std::map;
 using std::vector;
 using geometry::line2f;
 
+using amrl_msgs::msg::VisualizationMsg;
 
 ///////////////////////////////////////////////////////////////////////////////
 //                             PRIVATE FUNCTIONS                             //
@@ -370,14 +360,22 @@ bool GlobalPlanner::get_carrot(Eigen::Vector2f& curr_loc, float curr_angle, Eige
     }
     else {
 
-        // carrot_loc->x() = global_path_.front().first;
-        // carrot_loc->y() = global_path_.front().second;
+        carrot_loc->x() = global_path_.back().first;
+        carrot_loc->y() = global_path_.back().second;
 
          // Iterate backwards using reverse iterators
-        for (auto rit = global_path_.rbegin(); rit != global_path_.rend(); ++rit) {
-            carrot_loc->x() = rit->first;
-            carrot_loc->y() = rit->second;
-            if ((curr_loc - *carrot_loc).norm() < 1) { // can change min dist here
+        // for (auto rit = global_path_.rbegin(); rit != global_path_.rend(); ++rit) {
+        //     carrot_loc->x() = rit->first;
+        //     carrot_loc->y() = rit->second;
+        //     if ((curr_loc - *carrot_loc).norm() < .7) { // can change min dist here
+        //         break;
+        //     }
+        // }
+        for (auto it = global_path_.begin(); it != global_path_.end(); ++it) {
+            // calc sqnorm from beginning of the global path
+            if (pow(curr_loc.x() - it->first, 2) + pow(curr_loc.y() - it->second, 2) > .25) { // can change min dist here
+                carrot_loc->x() = it->first;
+                carrot_loc->y() = it->second;
                 break;
             }
         }
