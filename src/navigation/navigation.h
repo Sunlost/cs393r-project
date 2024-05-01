@@ -46,6 +46,7 @@ struct PathOption {
   float clearance = 10;
   float free_path_length = 100;
   float dist_to_closest_point = 100;
+  float dist_to_closest_point = 100;
   Eigen::Vector2f obstruction = Eigen::Vector2f::Zero();
   Eigen::Vector2f closest_point = Eigen::Vector2f::Zero();
 

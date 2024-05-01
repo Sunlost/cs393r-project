@@ -358,6 +358,7 @@ void Navigation::Run() {
   bool carrot_found = global_planner_.get_carrot(robot_loc_, robot_angle_, &carrot_loc, global_viz_msg_);
   // plan must have been invalid. replan and get a new carrot
   // if(!carrot_found) {
+  // if(!carrot_found) {
     global_planner_.set_start(robot_loc_.x(), robot_loc_.y());
     global_planner_.construct_map(map_);
     global_planner_.plan_global_path();
@@ -366,6 +367,8 @@ void Navigation::Run() {
     if(!carrot_found) {
       twist_msg_.linear.x = 0;
       goal_established_ = false;
+      // print no carrot found
+      cout << "No carrot found" << endl;
       // print no carrot found
       cout << "No carrot found" << endl;
       return;
@@ -403,7 +406,13 @@ void Navigation::Run() {
   //     visualization::DrawPathOption(path_options[i].curvature, path_options[i].free_path_length, 0, 0x0000FF, false, local_viz_msg_);
   //     visualization::DrawCross(path_options[i].closest_point, .2, 0x0000FF, local_viz_msg_);
   // }
+  // for (unsigned int i = 0; i < path_options.size(); i++) {
+  //     visualization::DrawPathOption(path_options[i].curvature, path_options[i].free_path_length, 0, 0x0000FF, false, local_viz_msg_);
+  //     visualization::DrawCross(path_options[i].closest_point, .2, 0x0000FF, local_viz_msg_);
+  // }
   // Draw the best path in red
+  // visualization::DrawPathOption(path_options[best_path].curvature, path_options[best_path].free_path_length, path_options[best_path].clearance, 0xFF0000, true, local_viz_msg_);
+  // visualization::DrawCross(path_options[best_path].closest_point, 1, 0x00ff00, local_viz_msg_);
   // visualization::DrawPathOption(path_options[best_path].curvature, path_options[best_path].free_path_length, path_options[best_path].clearance, 0xFF0000, true, local_viz_msg_);
   // visualization::DrawCross(path_options[best_path].closest_point, 1, 0x00ff00, local_viz_msg_);
 // Find the closest point in the point cloud

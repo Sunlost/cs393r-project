@@ -74,6 +74,25 @@ float get_gap_size(const Eigen::Vector2f &c1, const Eigen::Vector2f &c2) {
     // float min_dist = std::min(std::min(d1, d2), std::min(d3, d4));
     // return min_dist;
     return (c1 - c2).norm();
+// float get_gap_size(const line2f &c1, const line2f &c2) {
+//     // get the minimum distance between the two lines
+//     float d1 = projected_dist(c1.p0, c2);
+//     float d2 = projected_dist(c1.p1, c2);
+//     float d3 = projected_dist(c2.p0, c1);
+//     float d4 = projected_dist(c2.p1, c1);
+//     float min_dist = std::min(std::min(d1, d2), std::min(d3, d4));
+//     return min_dist;
+// }
+
+float get_gap_size(const Eigen::Vector2f &c1, const Eigen::Vector2f &c2) {
+    // // get the minimum distance between the two lines
+    // float d1 = projected_dist(c1.p0, c2);
+    // float d2 = projected_dist(c1.p1, c2);
+    // float d3 = projected_dist(c2.p0, c1);
+    // float d4 = projected_dist(c2.p1, c1);
+    // float min_dist = std::min(std::min(d1, d2), std::min(d3, d4));
+    // return min_dist;
+    return (c1 - c2).norm();
 }
 
 
@@ -147,6 +166,27 @@ vector<Eigen::Vector2f> interpolate_points(const Eigen::Vector2f& p1, const Eige
 
     return interpolated_points;
 }
+// Function to perform linear interpolation between two Eigen Vector2f endpoints
+vector<Eigen::Vector2f> interpolate_points(const Eigen::Vector2f& p1, const Eigen::Vector2f& p2, float spacing_distance) {
+    vector<Eigen::Vector2f> interpolated_points;
+
+    // Calculate the total distance between p1 and p2
+    float total_distance = (p2 - p1).norm();
+
+    // Calculate the number of segments based on spacing distance
+    int num_segments = std::max(1, static_cast<int>(total_distance / spacing_distance));
+
+    // Calculate the increment for parameter t
+    float delta_t = 1.0f / num_segments;
+
+    for (int i = 1; i <= num_segments; ++i) {
+        float t = i * delta_t;
+        Eigen::Vector2f interpolated_point = p1 + t * (p2 - p1);
+        interpolated_points.push_back(interpolated_point);
+    }
+
+    return interpolated_points;
+}
 
 void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
     vb_.clear();
@@ -157,14 +197,24 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
     // insert the goal point into the voronoi builder
     vb_.insert_point(goal_coords_.first, goal_coords_.second);
     global_map_.push_back(goal_);
+    global_map_.push_back(goal_);
 
     // insert start point into the voronoi builder
     vb_.insert_point(start_.x() * SCALE_FACTOR, start_.y() * SCALE_FACTOR);
+    global_map_.push_back(start_);
     global_map_.push_back(start_);
 
     // insert map geometry into the voronoi builder
     for (size_t i = 0; i < map.lines.size(); i++) {
         const line2f map_line = map.lines[i];
+        vector<Eigen::Vector2f> vec = interpolate_points(map_line.p0, map_line.p1, .2);
+        for (const auto & p : vec) {
+            vb_.insert_point(
+                p.x() * SCALE_FACTOR,
+                p.y() * SCALE_FACTOR
+            );
+            global_map_.push_back(p);
+        }
         vector<Eigen::Vector2f> vec = interpolate_points(map_line.p0, map_line.p1, .2);
         for (const auto & p : vec) {
             vb_.insert_point(
@@ -203,6 +253,8 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
                 
                 // cells are built around a source (obstacle). source_index is 
                 // the order the obstacles were added to the map
+                Eigen::Vector2f l1 = global_map_[edge->cell()->source_index()];
+                Eigen::Vector2f l2 = global_map_[edge->twin()->cell()->source_index()];
                 Eigen::Vector2f l1 = global_map_[edge->cell()->source_index()];
                 Eigen::Vector2f l2 = global_map_[edge->twin()->cell()->source_index()];
                 if (get_gap_size(l1, l2) > 0.5) {
@@ -382,6 +434,7 @@ bool GlobalPlanner::get_carrot(Eigen::Vector2f& curr_loc, float curr_angle, Eige
     }
 
     // print the carrot
+    // std::cout << "Carrot: " << carrot_loc->x() << " " << carrot_loc->y() << std::endl;
     // std::cout << "Carrot: " << carrot_loc->x() << " " << carrot_loc->y() << std::endl;
     return true;
 }
