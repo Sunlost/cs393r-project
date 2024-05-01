@@ -74,8 +74,9 @@ ament_target_dependencies(particle_filter rclcpp amrl_msgs sensor_msgs geometry_
 add_executable(navigation
                         src/navigation/navigation_main.cc
                         src/navigation/navigation.cc
-			src/navigation/path_options.cc
-                        src/navigation/global_planner.cc)
+			                  src/navigation/path_options.cc
+                        src/navigation/global_planner.cc
+                        src/navigation/coverage_planner.cc)
 TARGET_LINK_LIBRARIES(navigation shared_library ${libs})
 ament_target_dependencies(navigation rclcpp rclcpp_action amrl_msgs sensor_msgs geometry_msgs irobot_create_msgs)
 

@@ -82,7 +82,8 @@ Navigation::Navigation(const string &map_name, const std::shared_ptr<rclcpp::Nod
     nav_goal_angle_(0),
     latency_compensation_(new LatencyCompensation(0, 0, 0)),
     global_planner_(),
-    goal_established_(false)
+    goal_established_(false), 
+    global_plan_made_(false)
   {
   cout << "navigation constructor" << endl;
   map_.Load(GetMapFileFromName(map_name));
@@ -115,7 +116,8 @@ void Navigation::SetNavGoal(const Vector2f& loc, float angle) {
   if (goal_established_) {
     global_planner_.set_start(robot_loc_.x(), robot_loc_.y());
     global_planner_.construct_map(map_);
-    global_planner_.plan_global_path();
+    if(!global_plan_made_) global_planner_.plan_global_path();
+    global_plan_made_ = true;
   }
   goal_established_ = true; 
 
@@ -360,7 +362,8 @@ void Navigation::Run() {
   // if(!carrot_found) {
     global_planner_.set_start(robot_loc_.x(), robot_loc_.y());
     global_planner_.construct_map(map_);
-    global_planner_.plan_global_path();
+    if(!global_plan_made_) global_planner_.plan_global_path();
+    global_plan_made_ = true;
     carrot_found = global_planner_.get_carrot(robot_loc_, robot_angle_, &carrot_loc, global_viz_msg_);
     // plan must be unreachable. stop moving
     if(!carrot_found) {

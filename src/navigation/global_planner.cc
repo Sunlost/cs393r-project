@@ -8,6 +8,7 @@
 #include "vector_map/vector_map.h"
 #include "simple_queue.h"
 #include "global_planner.h"
+#include "coverage_planner.h"
 
 // visualization header
 #include "visualization/visualization.h"
@@ -26,6 +27,8 @@
 using std::map;
 using std::vector;
 using geometry::line2f;
+
+using namespace coverage_planner;
 
 using amrl_msgs::msg::VisualizationMsg;
 
@@ -289,56 +292,60 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
 // function to run a*
 void GlobalPlanner::plan_global_path() {
     pair<float, float> start = pair<float, float>(start_.x(), start_.y());
-    pair<float, float> goal(goal_.x(), goal_.y());
+    global_path_.clear();
+    construct_global_coverage_path(voronoi_edge_map_, start, global_path_);
+    pineapple();
 
-    SimpleQueue<pair<float, float>, double> frontier;
-    frontier.Push(start, 0);
+    // pair<float, float> goal(goal_.x(), goal_.y());
 
-    map<pair<float, float>, pair<float, float>> parent;
-    parent[start] = start;
+    // SimpleQueue<pair<float, float>, double> frontier;
+    // frontier.Push(start, 0);
 
-    map<pair<float, float>, double> cost;
-    cost[start] = 0;
+    // map<pair<float, float>, pair<float, float>> parent;
+    // parent[start] = start;
 
-    bool goal_found = false;
+    // map<pair<float, float>, double> cost;
+    // cost[start] = 0;
 
-    while(!frontier.Empty()) {
-        pair<float, float> cur = frontier.Pop();
-        if(cur == goal) {
-            // if the goal is unreachable, bad things happen. so we set a flag for whether goal was reachable
-            goal_found = true;
-            break;
-        };
+    // bool goal_found = false;
+
+    // while(!frontier.Empty()) {
+    //     pair<float, float> cur = frontier.Pop();
+    //     if(cur == goal) {
+    //         // if the goal is unreachable, bad things happen. so we set a flag for whether goal was reachable
+    //         goal_found = true;
+    //         break;
+    //     };
         
-        list<pair<float, float>> adj_list = voronoi_edge_map_[cur];
+    //     list<pair<float, float>> adj_list = voronoi_edge_map_[cur];
         
-        for(list<pair<float, float>>::iterator it = adj_list.begin(); it != adj_list.end(); it++) {
-            pair<float, float> adj = *it;
-            double dist = sqrt(pow(cur.first - adj.first, 2) + pow(cur.second - adj.second, 2));
-            double new_cost = cost[cur] + dist;
-            map<pair<float, float>, double>::iterator entry = cost.find(adj);
-            if(entry == cost.end() || entry->second > new_cost) {
-                cost[adj] = new_cost;
-                parent[adj] = cur;
-                // TODO: check if we can memoize this somehow..?
-                double heur_cost = sqrt(pow(goal.first - adj.first, 2) + pow(goal.second - adj.second, 2));
-                frontier.Push(adj, new_cost + heur_cost);
-            }
-        }
-    }
+    //     for(list<pair<float, float>>::iterator it = adj_list.begin(); it != adj_list.end(); it++) {
+    //         pair<float, float> adj = *it;
+    //         double dist = sqrt(pow(cur.first - adj.first, 2) + pow(cur.second - adj.second, 2));
+    //         double new_cost = cost[cur] + dist;
+    //         map<pair<float, float>, double>::iterator entry = cost.find(adj);
+    //         if(entry == cost.end() || entry->second > new_cost) {
+    //             cost[adj] = new_cost;
+    //             parent[adj] = cur;
+    //             // TODO: check if we can memoize this somehow..?
+    //             double heur_cost = sqrt(pow(goal.first - adj.first, 2) + pow(goal.second - adj.second, 2));
+    //             frontier.Push(adj, new_cost + heur_cost);
+    //         }
+    //     }
+    // }
 
-    // follow parent dict mappings from goal to our starting vertex to build path
-    if (goal_found) {
-        global_path_.clear();
-        pair<float, float> backtrack = goal;
-        do {
-            global_path_.push_front(backtrack);
-            backtrack = parent[backtrack];
-        } while(backtrack != start);
-        // global_path_.push_front(start);
-    }
+    // // follow parent dict mappings from goal to our starting vertex to build path
+    // if (goal_found) {
+    //     global_path_.clear();
+    //     pair<float, float> backtrack = goal;
+    //     do {
+    //         global_path_.push_front(backtrack);
+    //         backtrack = parent[backtrack];
+    //     } while(backtrack != start);
+    //     // global_path_.push_front(start);
+    // }
     
-    return;
+    // return;
 }
 
 

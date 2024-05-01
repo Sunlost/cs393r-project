@@ -181,6 +181,8 @@ private:
 
   GlobalPlanner global_planner_;
   bool goal_established_;
+  // Whether a global plan has been created or not
+  bool global_plan_made_;
 
   // Status of the most recent goal request.
   // Should be none if there isn't one in progress / that you still have to process the completion of

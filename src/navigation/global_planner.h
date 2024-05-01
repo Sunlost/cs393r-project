@@ -25,9 +25,9 @@ public:
     // voronoi diagram.
     voronoi_diagram<double> vd_;
     // vertex:vertex edge representation so we don't have to interact with Boost's API
-    map<pair<float, float>, list<pair<float, float>>> voronoi_edge_map_;
+    map<pair<float, float>, list<pair<float, float> > > voronoi_edge_map_;
     // our currently-planned path
-    list<pair<float, float>> global_path_;
+    list<pair<float, float> > global_path_;
     // list of current map lines
     std::vector<Eigen::Vector2f> global_map_;
 
