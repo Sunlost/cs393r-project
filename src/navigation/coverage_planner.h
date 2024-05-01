@@ -77,7 +77,7 @@ public:
     UnionFind(uint64_t V){
         parent = new int[V];
         rank = new int[V];
-        for(uint64_t i = 0; i < V; i++) {
+        for(uint64_t i = 1; i <= V; i++) {
             parent[i] = i;
             rank[i] = 1;
         }
@@ -108,9 +108,9 @@ public:
 
 namespace coverage_planner {
 
-void construct_global_coverage_path(map<pair<float, float>, list<pair<float, float> > > edge_map,
+void construct_global_coverage_path(map<pair<float, float>, list<pair<float, float> > > &edge_map,
                                     pair<float, float> starting_node, 
-                                    list<pair<float, float> > output);
+                                    list<pair<float, float> > &output);
 
 void pineapple();
 
