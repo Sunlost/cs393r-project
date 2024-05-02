@@ -387,8 +387,8 @@ void Navigation::Run() {
   // print the carrot
   // cout << "2 "<< carrot_loc.x() << " " << carrot_loc.y() << endl;
 
-  vector<PathOption> path_options = samplePathOptions(31, point_cloud_, robot_config_, carrot_loc);
-  int best_path = selectPath(path_options, carrot_loc);
+  // vector<PathOption> path_options = samplePathOptions(31, point_cloud_, robot_config_, carrot_loc);
+  // int best_path = selectPath(path_options, carrot_loc);
 
   // todo: set twist, set twist.linear.x to speed twist.angular.z is curvature * speed 
   // drive_msg_.curvature = path_options[best_path].curvature;
