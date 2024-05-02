@@ -107,20 +107,19 @@ Navigation::Navigation(const string &map_name, const std::shared_ptr<rclcpp::Nod
 }
 
 void Navigation::SetNavGoal(const Vector2f& loc, float angle) {
-  cout << "set nav goal" << endl;
-  // time to voronoi
-  nav_goal_loc_ = loc;
-  nav_goal_angle_ = angle;
-  global_planner_.set_goal(nav_goal_loc_.x(), nav_goal_loc_.y());
-  // replan if new nav target is established after init 
-  if (goal_established_) {
-    global_planner_.set_start(robot_loc_.x(), robot_loc_.y());
-    global_planner_.construct_map(map_);
-    if(!global_plan_made_) global_planner_.plan_global_path();
-    global_plan_made_ = true;
-  }
-  goal_established_ = true; 
-
+  // cout << "set nav goal" << endl;
+  // // time to voronoi
+  // nav_goal_loc_ = loc;
+  // nav_goal_angle_ = angle;
+  // global_planner_.set_goal(nav_goal_loc_.x(), nav_goal_loc_.y());
+  // // replan if new nav target is established after init 
+  // if (goal_established_) {
+  //   global_planner_.set_start(robot_loc_.x(), robot_loc_.y());
+  //   global_planner_.construct_map(map_);
+  //   if(!global_plan_made_) global_planner_.plan_global_path();
+  //   global_plan_made_ = true;
+  // }
+  // goal_established_ = true; 
 }
 
 bool Navigation::StartDriveDistanceAction(const double &distance, const double &max_translation_speed,
@@ -328,7 +327,7 @@ void Navigation::Run() {
 
   // cout << "odom initialized?: " << odom_initialized_ << "goal established?: " << goal_established_ << endl;
   // If odometry has not been initialized or goal has not been set, we can't do anything.
-  if (!odom_initialized_ || !goal_established_) return;
+  if (!odom_initialized_) return;
 
   // robot is within .5m of goal, consider it reached
   if ((robot_loc_ - nav_goal_loc_).squaredNorm() < 0.25){
@@ -356,24 +355,22 @@ void Navigation::Run() {
   // float cmd_vel = run1DTimeOptimalControl(dist_to_go, current_speed, robot_config_);
 
 
-  Eigen::Vector2f carrot_loc = nav_goal_loc_;
-  bool carrot_found = global_planner_.get_carrot(robot_loc_, robot_angle_, &carrot_loc, global_viz_msg_);
-  // plan must have been invalid. replan and get a new carrot
-  // if(!carrot_found) {
+  if(!global_plan_made_) {
     global_planner_.set_start(robot_loc_.x(), robot_loc_.y());
     global_planner_.construct_map(map_);
-    if(!global_plan_made_) global_planner_.plan_global_path();
+    global_planner_.plan_global_path();
     global_plan_made_ = true;
-    carrot_found = global_planner_.get_carrot(robot_loc_, robot_angle_, &carrot_loc, global_viz_msg_);
-    // plan must be unreachable. stop moving
-    if(!carrot_found) {
-      twist_msg_.linear.x = 0;
-      goal_established_ = false;
-      // print no carrot found
-      cout << "No carrot found" << endl;
-      return;
-    }
-  // }
+  }
+
+  Eigen::Vector2f carrot_loc = nav_goal_loc_;
+  bool carrot_found = global_planner_.get_carrot(robot_loc_, robot_angle_, &carrot_loc, global_viz_msg_);
+  if(!carrot_found) {
+    twist_msg_.linear.x = 0;
+    goal_established_ = false;
+    // print no carrot found
+    cout << "No carrot found" << endl;
+    return;
+  }
   visualization::DrawCross(carrot_loc, 1, 0x23AB3e, global_viz_msg_);
 
   // cout << "0 "<<carrot_loc.x() << " " << carrot_loc.y() << endl;

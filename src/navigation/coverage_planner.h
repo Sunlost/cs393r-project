@@ -10,48 +10,43 @@ using std::list;
 class Point {
 public:
 
-    Point(){};
+    Point() { x = 0.0; y = 0.0; }
 
     Point(float x, float y) {
         this->x = x;
         this->y = y;
-    };
-
-    inline bool operator<(const Point& other) const {
-        if(this->x == other.x) return this->x < other.x;
-        else return this->y < other.y;
-    }
-
-    inline bool operator==(const Point& other) const {
-        return (this->x == other.x) && (this->y == other.y);
-    }
-
-    inline bool operator!=(const Point& other) const {
-        return !(*this == other);
-    }
-
-    float dist(Point other) {
-        return sqrt(pow(this->x + other.x, 2) + pow(this->y + other.y, 2));
     }
 
     float x;
     float y;
 };
 
+inline bool operator<(const Point& lhs, const Point& rhs) {
+    if(lhs.x != rhs.x) return lhs.x < rhs.x;
+    else return lhs.y < lhs.y;
+}
+
+inline bool operator==(const Point& lhs, const Point& rhs) {
+    return (lhs.x == rhs.x) && (lhs.y == rhs.y);
+}
+
+inline bool operator!=(const Point& lhs, const Point& rhs) {
+    return (lhs.x != rhs.x) || (lhs.y != rhs.y);
+}
+
+inline float norm_dist(Point a, Point b) {
+    return sqrt(pow(a.x + b.x, 2) + pow(a.y + b.y, 2));
+}
+
 
 
 class Edge {
 public:
 
-    Edge(){};
-
     Edge(int a, int b, float dist){
         this->a = a;
         this->b = b;
-    };
-
-    inline bool operator<(const Edge& other) const {
-        return this->dist < other.dist;
+        this->dist = dist;
     }
 
     int a;
@@ -59,10 +54,21 @@ public:
     float dist;
 };
 
-class EdgeNonDecrComparator {
+inline bool operator < (Edge const& lhs, Edge const& rhs) {
+    return lhs.dist < rhs.dist;
+}
+
+class IncrCompare {
 public:
-    bool operator() (Edge a, Edge b) {
-        return a.dist > b.dist;
+    bool operator () (Edge* a, Edge* b) {
+        return a->dist < b->dist;
+    } 
+};
+
+class DecrCompare {
+public:
+    bool operator () (Edge* a, Edge* b) {
+        return a->dist > b->dist;
     } 
 };
 
@@ -110,8 +116,6 @@ namespace coverage_planner {
 
 void construct_global_coverage_path(map<pair<float, float>, list<pair<float, float> > > &edge_map,
                                     pair<float, float> starting_node, 
-                                    list<pair<float, float> > &output);
-
-void pineapple();
+                                    list<pair<float, float>* > &output);
 
 }

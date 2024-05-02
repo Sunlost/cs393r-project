@@ -80,6 +80,13 @@ add_executable(navigation
 TARGET_LINK_LIBRARIES(navigation shared_library ${libs})
 ament_target_dependencies(navigation rclcpp rclcpp_action amrl_msgs sensor_msgs geometry_msgs irobot_create_msgs)
 
+add_executable(planner_test
+                        src/navigation/planner_test.cc
+                        src/navigation/global_planner.cc
+                        src/navigation/coverage_planner.cc)
+TARGET_LINK_LIBRARIES(planner_test shared_library ${libs})
+ament_target_dependencies(planner_test rclcpp amrl_msgs sensor_msgs geometry_msgs)
+
 add_executable(eigen_tutorial
                src/eigen_tutorial.cc)
 

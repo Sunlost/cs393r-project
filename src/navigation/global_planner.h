@@ -27,9 +27,10 @@ public:
     // vertex:vertex edge representation so we don't have to interact with Boost's API
     map<pair<float, float>, list<pair<float, float> > > voronoi_edge_map_;
     // our currently-planned path
-    list<pair<float, float> > global_path_;
+    list<pair<float, float>* > global_path_;
     // list of current map lines
     std::vector<Eigen::Vector2f> global_map_;
+    vector_map::VectorMap full_map;
 
 // CONSTANT VARIABLES
     // multiplier for all float coordinate points to prevent full decimal loss when converted

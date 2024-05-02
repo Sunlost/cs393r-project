@@ -117,10 +117,10 @@ bool is_valid_point(const voronoi_diagram<double>::vertex_type* point) {
 
 
 // sets the goal point
-void GlobalPlanner::set_goal(float goal_x, float goal_y) {
-    goal_coords_ = pair<float, float>(goal_x * SCALE_FACTOR, goal_y * SCALE_FACTOR);
-    goal_ = Eigen::Vector2f(goal_x, goal_y);
-}
+// void GlobalPlanner::set_goal(float goal_x, float goal_y) {
+//     goal_coords_ = pair<float, float>(goal_x * SCALE_FACTOR, goal_y * SCALE_FACTOR);
+//     goal_ = Eigen::Vector2f(goal_x, goal_y);
+// }
 
 
 
@@ -128,6 +128,8 @@ void GlobalPlanner::set_goal(float goal_x, float goal_y) {
 void GlobalPlanner::set_start(float start_x, float start_y) {
     start_ = Eigen::Vector2f(start_x, start_y);
 }
+
+
 
 // Function to perform linear interpolation between two Eigen Vector2f endpoints
 vector<Eigen::Vector2f> interpolate_points(const Eigen::Vector2f& p1, const Eigen::Vector2f& p2, float spacing_distance) {
@@ -151,15 +153,19 @@ vector<Eigen::Vector2f> interpolate_points(const Eigen::Vector2f& p1, const Eige
     return interpolated_points;
 }
 
+
+
 void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
     vb_.clear();
     vd_.clear();
     global_path_.clear();
     global_map_.clear();
 
+    full_map = map;
+
     // insert the goal point into the voronoi builder
-    vb_.insert_point(goal_coords_.first, goal_coords_.second);
-    global_map_.push_back(goal_);
+    // vb_.insert_point(goal_coords_.first, goal_coords_.second);
+    // global_map_.push_back(goal_);
 
     // insert start point into the voronoi builder
     vb_.insert_point(start_.x() * SCALE_FACTOR, start_.y() * SCALE_FACTOR);
@@ -217,36 +223,40 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
     }
 
     // find the cell the goal point "obstacle" generated. 
-    bool found_start = false;
-    bool found_goal = false;
+    // bool found_start = false;
+    // bool found_goal = false;
     for(voronoi_diagram<double>::const_cell_iterator it = vd_.cells().begin(); 
         it != vd_.cells().end(); ++it) {
 
-        if(it->source_index() == 0) { 
-            goal_cell_ = &(*it);
-            found_goal = true;
-        }
-        else if (it->source_index() == 1) {
+        // if(it->source_index() == 0) { 
+        //     goal_cell_ = &(*it);
+        //     found_goal = true;
+        // }
+        
+        // else 
+        if (it->source_index() == 0) {
             start_cell_ = &(*it);
-            found_start = true;
+            // found_start = true;
+            break;
         }
         
-        if (found_start && found_goal) break;
+        // if (found_start && found_goal) break;
     }
 
     // add edges from each goal cell vertex to the goal
-    const voronoi_diagram<double>::edge_type* goal_edge = goal_cell_->incident_edge();
-    pair<float, float> goal(goal_.x(), goal_.y());
-    do {
-        if (goal_edge->is_primary() && goal_edge->is_finite()) {
-            const voronoi_diagram<double>::vertex_type* vertex = goal_edge->vertex0();
-            if (!std::isnan(vertex->x()) && !std::isnan(vertex->y())) {
-                pair<float, float> this_vertex(vertex->x() / SCALE_FACTOR, vertex->y() / SCALE_FACTOR);
-                edge_map[this_vertex].push_front(goal);
-            }
-        }
-        goal_edge = goal_edge->next();
-    } while(goal_edge != goal_cell_->incident_edge());
+    // const voronoi_diagram<double>::edge_type* goal_edge = goal_cell_->incident_edge();
+    // pair<float, float> goal(goal_.x(), goal_.y());
+    // do {
+    //     if (goal_edge->is_primary() && goal_edge->is_finite()) {
+    //         const voronoi_diagram<double>::vertex_type* vertex = goal_edge->vertex0();
+    //         if (!std::isnan(vertex->x()) && !std::isnan(vertex->y())) {
+    //             pair<float, float> this_vertex(vertex->x() / SCALE_FACTOR, vertex->y() / SCALE_FACTOR);
+    //             edge_map[this_vertex].push_front(goal);
+    //             edge_map[goal].push_front(this_vertex);
+    //         }
+    //     }
+    //     goal_edge = goal_edge->next();
+    // } while(goal_edge != goal_cell_->incident_edge());
 
 
     // add edges from start cell to each connecting vertex
@@ -258,6 +268,7 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
             if (!std::isnan(vertex->x()) && !std::isnan(vertex->y())) {
                 pair<float, float> this_vertex(vertex->x() / SCALE_FACTOR, vertex->y() / SCALE_FACTOR);
                 edge_map[start].push_back(this_vertex);
+                edge_map[this_vertex].push_back(start);
             }
         }
         start_edge = start_edge->next();
@@ -265,6 +276,43 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
 
     // replace our old map representation (if it exists) with the new map representation
     voronoi_edge_map_ = edge_map;
+}
+
+
+
+void GlobalPlanner::plan_global_path() {
+    pair<float, float> start = pair<float, float>(start_.x(), start_.y());
+    global_path_.clear();
+    construct_global_coverage_path(voronoi_edge_map_, start, global_path_);
+
+    list<pair<float, float>* >::iterator a = global_path_.begin();
+    list<pair<float, float>* >::iterator b = global_path_.begin();
+    b++;
+    list<pair<float, float>* >::iterator c = global_path_.begin();
+    c++;
+    c++;
+    while(c != global_path_.end()) {
+        // detect if theres an obstacle between a and c on a straight line.
+            // if yes, b is needed to avoid it. keep b.
+            // else, discard b.
+        line2f my_line((*a)->first, (*a)->second, (*c)->first, (*c)->second);
+        bool intersects = false;
+
+        for (size_t i = 0; i < full_map.lines.size() && !intersects; i++) {
+            const line2f map_line = full_map.lines[i];
+            intersects = map_line.Intersects(my_line);
+        }
+
+        if(!intersects) {
+            b = global_path_.erase(b);
+            c = std::next(b, 1);
+            
+        } else {
+            a++;
+            b++;
+            c++;
+        }
+    }
 }
 
 
@@ -289,13 +337,8 @@ void GlobalPlanner::construct_map(const vector_map::VectorMap& map) {
 
 
 
-// function to run a*
-void GlobalPlanner::plan_global_path() {
-    pair<float, float> start = pair<float, float>(start_.x(), start_.y());
-    global_path_.clear();
-    construct_global_coverage_path(voronoi_edge_map_, start, global_path_);
-    pineapple();
-
+// // function to run a*
+// void GlobalPlanner::plan_global_path() {
     // pair<float, float> goal(goal_.x(), goal_.y());
 
     // SimpleQueue<pair<float, float>, double> frontier;
@@ -346,7 +389,7 @@ void GlobalPlanner::plan_global_path() {
     // }
     
     // return;
-}
+// }
 
 
 
@@ -358,33 +401,23 @@ bool GlobalPlanner::get_carrot(Eigen::Vector2f& curr_loc, float curr_angle, Eige
     // std::cout << "Get Carrot Called" << std::endl;
     if (global_path_.size() == 0) {
         return false;
-    }
-
-    if (global_path_.size() == 2) { // robot can go directly to goal, so set goal as carrot.
-        carrot_loc->x() = global_path_.back().first;
-        carrot_loc->y() = global_path_.back().second;
+    } else if (global_path_.size() == 2) { // robot can go directly to goal, so set goal as carrot.
+        carrot_loc->x() = global_path_.back()->first;
+        carrot_loc->y() = global_path_.back()->second;
         return true;
-    }
-    else {
+    } else {
 
-        carrot_loc->x() = global_path_.back().first;
-        carrot_loc->y() = global_path_.back().second;
+        carrot_loc->x() = global_path_.back()->first;
+        carrot_loc->y() = global_path_.back()->second;
 
-         // Iterate backwards using reverse iterators
-        // for (auto rit = global_path_.rbegin(); rit != global_path_.rend(); ++rit) {
-        //     carrot_loc->x() = rit->first;
-        //     carrot_loc->y() = rit->second;
-        //     if ((curr_loc - *carrot_loc).norm() < .7) { // can change min dist here
-        //         break;
-        //     }
-        // }
-        for (auto it = global_path_.begin(); it != global_path_.end(); ++it) {
+        for (list<pair<float, float>* >::iterator it = global_path_.begin(); it != global_path_.end();  ) {
             // calc sqnorm from beginning of the global path
-            if (pow(curr_loc.x() - it->first, 2) + pow(curr_loc.y() - it->second, 2) > .25) { // can change min dist here
-                carrot_loc->x() = it->first;
-                carrot_loc->y() = it->second;
+            if (pow(curr_loc.x() - (*it)->first, 2) + pow(curr_loc.y() - (*it)->second, 2) > .25) { // can change min dist here
+                carrot_loc->x() = (*it)->first;
+                carrot_loc->y() = (*it)->second;
                 break;
             }
+            global_path_.pop_front();
         }
     }
 
@@ -401,16 +434,17 @@ bool GlobalPlanner::get_carrot(Eigen::Vector2f& curr_loc, float curr_angle, Eige
 
 // visualize our plan on the map
 void GlobalPlanner::visualize_global_plan(amrl_msgs::msg::VisualizationMsg & viz_msg, uint32_t color) {
-    Eigen::Vector2f prev(global_path_.front().first, global_path_.front().second);
+    Eigen::Vector2f prev(global_path_.front()->first, global_path_.front()->second);
     for (const auto& vertex : global_path_) {
-        Eigen::Vector2f p(vertex.first, vertex.second);
+        Eigen::Vector2f p(vertex->first, vertex->second);
         visualization::DrawCross(p, .1, color, viz_msg);
         visualization::DrawLine(prev, p, color, viz_msg);
         prev = p;
     }
-    visualization::DrawCross(Eigen::Vector2f(global_path_.back().first, global_path_.back().second), .2, 0x0000ff, viz_msg);
-    visualization::DrawCross(Eigen::Vector2f(global_path_.front().first, global_path_.front().second), .2, 0x00f0f0, viz_msg);
+    visualization::DrawCross(Eigen::Vector2f(global_path_.back()->first, global_path_.back()->second), .2, 0x0000ff, viz_msg);
+    visualization::DrawCross(Eigen::Vector2f(global_path_.front()->first, global_path_.front()->second), .2, 0x00f0f0, viz_msg);
 }
+
 
 
 // visualize our voronoi diagram on the map
