@@ -421,9 +421,9 @@ void Navigation::Run() {
   
     
 
-  geometry_msgs::msg::Twist twist;
-  twist.linear.x = 1;
-  twist_pub_->publish(twist);
+  // geometry_msgs::msg::Twist twist;
+  // twist.linear.x = 1;
+  // twist_pub_->publish(twist);
 
   // Add timestamps to all messages.
   local_viz_msg_.header.stamp = node_->get_clock()->now();
