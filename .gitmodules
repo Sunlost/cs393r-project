@@ -1,0 +1,3 @@
+[submodule "src/enml"]
+	path = src/enml
+	url = https://github.com/ut-amrl/enml

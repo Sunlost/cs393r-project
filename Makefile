@@ -22,7 +22,7 @@ docker_all: docker_build_q
 
 docker_shell: docker_build_q
 	if [ $(shell docker ps -a -f name=cs393r_starter_shell | wc -l) -ne 2 ]; then docker run -dit --name cs393r_starter_shell --volume "$(shell pwd)":/home/dev/cs393r_starter --workdir /home/dev/cs393r_starter -p 10272:10272 cs393r_starter; fi
-	docker exec -it cs393r_starter_shell bash -l
+	docker exec -u 0 -it cs393r_starter_shell bash -l
 
 docker_stop:
 	docker container stop cs393r_starter_shell
